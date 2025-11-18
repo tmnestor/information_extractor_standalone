@@ -1,0 +1,100 @@
+# Extraction Prompts Configuration
+# Edit this file to customize extraction behavior without code changes
+
+# System prompts for different modes
+system_prompts:
+  expert: "You are an expert document analyzer specialized in {document_type} extraction."
+  structured: "You are a structured data extraction system. Extract information with perfect formatting."
+  precise: "Extract only clearly visible information. Use NOT_FOUND for any unclear fields."
+  flexible: "Extract information, making reasonable inferences for partially visible fields."
+  strict: "Extract ONLY information that is completely clear and unambiguous."
+
+# Default system prompt mode
+default_system_mode: "expert"
+
+# Conversation protocol (applies to all extractions)
+conversation_protocol: |
+  CONVERSATION PROTOCOL:
+  - Start your response immediately with "DOCUMENT_TYPE:"
+  - Do NOT include conversational text like "I'll extract..." or "Based on the document..."
+  - Do NOT use bullet points, numbered lists, asterisks, or markdown formatting
+  - Output ONLY the structured extraction data
+  - End immediately after the last field with no additional text
+
+# Common extraction rules
+extraction_rules: |
+  RULES:
+  - Use exact text from document
+  - CRITICAL: Use ONLY pipe separators (|) for lists - NEVER use commas
+  - Be conservative: use NOT_FOUND if field is truly missing
+  - For monetary values: Include currency symbol (e.g., $123.45)
+  - For dates: Match format shown in document
+  - For lists: Separate items with " | " (space-pipe-space)
+  - Do NOT invent or hallucinate information
+
+# Document-specific instructions
+document_instructions:
+  invoice: |
+    This is an INVOICE document. Focus on:
+    - Vendor/supplier information (name, ABN, address)
+    - Customer/payer information
+    - Line items with quantities and prices
+    - GST and total amounts
+    - Invoice date and number
+
+  receipt: |
+    This is a RECEIPT document. Focus on:
+    - Merchant information
+    - Transaction date and time
+    - Purchased items with quantities and prices
+    - Payment method and totals
+    - GST if applicable
+
+  bank_statement: |
+    This is a BANK STATEMENT document. Focus on:
+    - Statement date range
+    - ALL individual transactions (do NOT combine multiple transactions)
+    - Transaction descriptions exactly as shown
+    - Transaction dates (one per transaction)
+    - Amounts paid (debits/withdrawals)
+    - CRITICAL: If multiple transactions occur on the same date, extract each as a SEPARATE row
+    - CRITICAL: Do NOT summarize or combine transactions
+
+# Document type detection prompt
+detection_prompt: |
+  Analyze this document image and identify its type.
+
+  Respond with ONLY ONE of these document types:
+  - INVOICE
+  - RECEIPT
+  - BANK_STATEMENT
+
+  Start your response immediately with "DOCUMENT_TYPE: [type]"
+  Do not include any explanation or additional text.
+
+# Extraction prompt template (fields will be injected dynamically)
+extraction_template: |
+  Extract structured data from this business document image.
+
+  {conversation_protocol}
+
+  {document_instructions}
+
+  OUTPUT FORMAT ({field_count} FIELDS):
+
+  {field_format}
+
+  {extraction_rules}
+
+# Field format guidelines
+field_format_guidelines:
+  text: "Plain text exactly as shown"
+  monetary: "Currency symbol + amount (e.g., $123.45)"
+  date: "DD/MM/YYYY or DD-MMM-YY format"
+  list: "Item 1 | Item 2 | Item 3 (pipe-separated)"
+  boolean: "true or false (lowercase)"
+  abn: "XX XXX XXX XXX (with spaces)"
+
+# Hot reload support
+version: "1.0.0"
+last_updated: "2025-11-17"

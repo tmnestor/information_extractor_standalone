@@ -1,0 +1,94 @@
+# Model Configurations for Document Extraction
+# Edit this file to add new models or change settings
+
+models:
+  # Llama-3.2-Vision Models
+  llama-3.2-11b-vision:
+    model_id: "meta-llama/Llama-3.2-11B-Vision-Instruct"
+    device: "cuda"
+    device_map: "auto"
+    max_new_tokens: 2048
+    temperature: 0.0
+    do_sample: false
+    load_in_8bit: false
+    load_in_4bit: false
+    torch_dtype: "bfloat16"
+    use_quantization: false
+    description: "Llama 3.2 Vision 11B - Full precision, best quality"
+
+  llama-3.2-11b-vision-8bit:
+    model_id: "meta-llama/Llama-3.2-11B-Vision-Instruct"
+    device: "cuda"
+    device_map: "auto"
+    max_new_tokens: 2048
+    temperature: 0.0
+    do_sample: false
+    load_in_8bit: true
+    load_in_4bit: false
+    torch_dtype: "bfloat16"
+    use_quantization: true
+    description: "Llama 3.2 Vision 11B - 8-bit quantized, memory efficient"
+
+  # InternVL3 Models
+  internvl3-2b:
+    model_id: "OpenGVLab/InternVL3-2B"
+    device: "cuda"
+    device_map: "auto"
+    max_new_tokens: 2048
+    temperature: 0.0
+    do_sample: false
+    load_in_8bit: false
+    load_in_4bit: false
+    torch_dtype: "bfloat16"
+    use_quantization: false
+    description: "InternVL3 2B - Lightweight, fast inference"
+
+  internvl3-8b:
+    model_id: "OpenGVLab/InternVL3-8B"
+    device: "cuda"
+    device_map: "auto"
+    max_new_tokens: 2048
+    temperature: 0.0
+    do_sample: false
+    load_in_8bit: false
+    load_in_4bit: false
+    torch_dtype: "bfloat16"
+    use_quantization: false
+    description: "InternVL3 8B - Strong performance, good balance"
+
+  internvl3-8b-quantized:
+    model_id: "OpenGVLab/InternVL3-8B"
+    device: "cuda"
+    device_map: "auto"
+    max_new_tokens: 2048
+    temperature: 0.0
+    do_sample: false
+    load_in_8bit: true
+    load_in_4bit: false
+    torch_dtype: "bfloat16"
+    use_quantization: true
+    description: "InternVL3 8B - Quantized for V100 compatibility"
+
+# Default model to use when none specified
+default_model: "llama-3.2-11b-vision-8bit"
+
+# Model paths configuration
+# UPDATE THESE PATHS for your environment
+# Download models from:
+#   - Llama: https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct
+#   - InternVL3: https://huggingface.co/OpenGVLab/InternVL3-8B or InternVL3-2B
+model_paths:
+  llama:
+    # Set this to your local model path
+    production: "/path/to/Llama-3.2-11B-Vision-Instruct"  # UPDATE THIS PATH
+    # Example paths (uncomment and modify as needed):
+    # development: "/nfs_share/models/Llama-3.2-11B-Vision-Instruct"
+    # efs: "/efs/shared/PTM/Llama-3.2-11B-Vision-Instruct"
+    # local: "~/models/Llama-3.2-11B-Vision-Instruct"
+
+  internvl3:
+    production: "/path/to/InternVL3-8B"  # UPDATE THIS PATH (or InternVL3-2B)
+    # development: "/nfs_share/models/InternVL3-8B"
+
+# Active deployment environment
+active_environment: "production"

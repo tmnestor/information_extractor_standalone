@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# Models (too large)
+models/
+*.bin
+*.safetensors
+*.pt
+*.pth
+
+# Data (user-specific)
+evaluation_data/*.csv
+evaluation_data/images/*.png
+!evaluation_data/images/sample_*.png
+
+# Output
+output/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
