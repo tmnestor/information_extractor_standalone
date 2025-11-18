@@ -100,7 +100,7 @@ model_paths:
     # local: "~/models/Llama-3.2-11B-Vision-Instruct"
 
   internvl3:
-    production: "/home/jovyan/nfs_share/models/InternVL3_5-8B"
+    production: "/home/jovyan/nfs_share/models/InternVL3-8B"
     # development: "/nfs_share/models/InternVL3-8B"
 
 # Active deployment environment
