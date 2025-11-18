@@ -370,20 +370,15 @@ def display_detailed_evaluation(
     console.print(f"[bold cyan]{'='*80}[/bold cyan]")
 
     # Get document-specific fields to evaluate
-    from common.config import get_yaml_config
+    from common.config import get_document_type_fields, get_validation_only_fields
 
-    config = get_yaml_config()
-    field_defs = config.get_field_definitions()
+    # Get all fields for this document type
+    fields_to_evaluate = get_document_type_fields(document_type)
 
-    # Filter fields based on document type
-    fields_to_evaluate = []
-    for field_name, field_def in field_defs.items():
-        if document_type.lower() in [dt.lower() for dt in field_def.get("document_types", [])]:
-            # Skip validation-only fields for bank statements
-            if document_type.lower() == "bank_statement":
-                if field_name in ["TRANSACTION_AMOUNTS_RECEIVED", "ACCOUNT_BALANCE"]:
-                    continue
-            fields_to_evaluate.append(field_name)
+    # Skip validation-only fields for bank statements
+    if document_type.lower() == "bank_statement":
+        validation_only = get_validation_only_fields()
+        fields_to_evaluate = [f for f in fields_to_evaluate if f not in validation_only]
 
     # Evaluate each field
     total_f1 = 0.0

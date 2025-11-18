@@ -464,6 +464,12 @@ def load_llama_model(
         quant_info = "8-bit quantization" if use_quantization else "16-bit precision"
         rprint(f"[blue]🔧 Llama optimizations active: {quant_info}, memory management, vision preservation[/blue]")
 
+    # Update generation config to avoid warnings when do_sample=False
+    # Remove temperature and top_p from default config (only used with do_sample=True)
+    if hasattr(model, 'generation_config'):
+        model.generation_config.temperature = None
+        model.generation_config.top_p = None
+
     return model, processor
 
 
