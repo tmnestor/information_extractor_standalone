@@ -436,16 +436,18 @@ class VisionLanguageModel(BaseChatModel):
         pixel_values = [transform(img) for img in images]
         pixel_values = torch.stack(pixel_values)
 
-        # Match model dtype
+        # InternVL3: Vision model is ALWAYS on cuda:0
+        vision_device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+        # Detect model dtype (bfloat16 for non-quantized, float16 for quantized)
         try:
             model_dtype = next(self._model.parameters()).dtype
-            pixel_values = pixel_values.to(dtype=model_dtype)
         except Exception:
-            pixel_values = pixel_values.to(dtype=torch.bfloat16)
+            # Fallback to bfloat16 for non-quantized models
+            model_dtype = torch.bfloat16
 
-        # Move to cuda:0 explicitly (InternVL3 vision model is always on cuda:0)
-        target_device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        pixel_values = pixel_values.to(target_device)
+        # Convert to correct device AND dtype in one call (critical for multi-GPU)
+        pixel_values = pixel_values.to(device=vision_device, dtype=model_dtype)
 
         return pixel_values
 
@@ -461,17 +463,8 @@ class VisionLanguageModel(BaseChatModel):
         Returns:
             str: Generated text
         """
-        # Prepare image for InternVL3
+        # Prepare image for InternVL3 (already on cuda:0 with float16 dtype)
         pixel_values = self._load_internvl_image(image, max_num=12)
-
-        # CRITICAL: Backup device check (prevents multi-GPU errors)
-        # Force to cuda:0 for multi-GPU setups (InternVL3 vision model is always on cuda:0)
-        import torch
-        target_device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        if pixel_values.device != target_device:
-            pixel_values = pixel_values.to(target_device)
-            if self.verbose:
-                print(f"🔧 BACKUP_DEVICE_FIX: Moved tensor from {pixel_values.device} to {target_device}")
 
         # Create generation config as dictionary (InternVL3 requirement)
         generation_config = {
