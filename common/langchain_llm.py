@@ -400,15 +400,22 @@ class VisionLanguageModel(BaseChatModel):
         return processed_images
 
     def _get_model_device(self):
-        """Get the primary device where the model is located."""
+        """Get the primary device where the vision model is located."""
         import torch
 
-        # For multi-GPU models, get the device of the first parameter
+        # For InternVL3, get device from vision model (critical for multi-GPU)
         try:
-            # Get device from first model parameter
-            return next(self._model.parameters()).device
+            # Try vision model's embeddings first (where image processing happens)
+            if hasattr(self._model, 'vision_model') and hasattr(self._model.vision_model, 'embeddings'):
+                return next(self._model.vision_model.embeddings.parameters()).device
+            # Try vision model directly
+            elif hasattr(self._model, 'vision_model'):
+                return next(self._model.vision_model.parameters()).device
+            # Fallback to first model parameter
+            else:
+                return next(self._model.parameters()).device
         except Exception:
-            # Fallback to cuda:0
+            # Last resort fallback
             return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def _load_internvl_image(self, image: Image.Image, input_size: int = 448, max_num: int = 12):
