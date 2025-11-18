@@ -57,17 +57,21 @@ def load_model(model_name: str):
             from common.llama_model_loader import load_llama_model
 
             model, processor = load_llama_model(
-                model_id=model_config.model_id,
-                quantization_bits=model_config.quantization_bits,
+                model_path=model_config.model_id,
+                use_quantization=False,  # No quantization
                 device_map=model_config.device_map,
+                torch_dtype=model_config.torch_dtype,
+                max_new_tokens=model_config.max_new_tokens,
             )
         elif "internvl" in model_name.lower():
             from common.internvl3_model_loader import load_internvl3_model
 
             model, tokenizer = load_internvl3_model(
-                model_id=model_config.model_id,
-                quantization_bits=model_config.quantization_bits,
+                model_path=model_config.model_id,
+                use_quantization=False,  # No quantization
                 device_map=model_config.device_map,
+                torch_dtype=model_config.torch_dtype,
+                max_new_tokens=model_config.max_new_tokens,
             )
             processor = tokenizer
         else:
