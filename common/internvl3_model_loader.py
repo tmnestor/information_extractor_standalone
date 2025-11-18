@@ -6,6 +6,7 @@ No vision module skipping - processes all components normally.
 """
 
 import gc
+import math
 from pathlib import Path
 from typing import Any, Tuple
 
@@ -13,9 +14,54 @@ import torch
 from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
-from transformers import AutoModel, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoConfig, AutoModel, AutoTokenizer, BitsAndBytesConfig
 
 from .extraction_cleaner import sanitize_for_rich
+
+
+def split_model(model_path: str) -> dict:
+    """
+    Create custom device_map for multi-GPU InternVL3 distribution.
+
+    Official InternVL3 pattern: Distributes language model layers across GPUs
+    while keeping vision model on GPU 0 (treating GPU 0 as "half" capacity).
+
+    Based on: https://internvl.readthedocs.io/en/latest/internvl3.0/multi_gpu_inference.html
+
+    Args:
+        model_path: Path to InternVL3 model (for loading config)
+
+    Returns:
+        device_map: Dictionary mapping module names to GPU devices
+    """
+    device_map = {}
+    world_size = torch.cuda.device_count()
+    config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+    num_layers = config.llm_config.num_hidden_layers
+
+    # Since the first GPU will be used for ViT, treat it as half a GPU.
+    num_layers_per_gpu = math.ceil(num_layers / (world_size - 0.5))
+    num_layers_per_gpu = [num_layers_per_gpu] * world_size
+    num_layers_per_gpu[0] = math.ceil(num_layers_per_gpu[0] * 0.5)
+
+    layer_cnt = 0
+    for i, num_layer in enumerate(num_layers_per_gpu):
+        for _j in range(num_layer):
+            device_map[f'language_model.model.layers.{layer_cnt}'] = i
+            layer_cnt += 1
+
+    # Vision model and embeddings on GPU 0
+    device_map['vision_model'] = 0
+    device_map['mlp1'] = 0
+    device_map['language_model.model.tok_embeddings'] = 0
+    device_map['language_model.model.embed_tokens'] = 0
+    device_map['language_model.output'] = 0
+    device_map['language_model.model.norm'] = 0
+    device_map['language_model.model.rotary_emb'] = 0
+    device_map['language_model.lm_head'] = 0
+    device_map[f'language_model.model.layers.{num_layers - 1}'] = 0
+
+    return device_map
 
 
 def load_internvl3_model(
@@ -370,19 +416,36 @@ def load_internvl3_model(
 
         # Load model according to official InternVL3 documentation format
         # https://internvl.readthedocs.io/en/latest/internvl3.0/quick_start.html
+        # https://internvl.readthedocs.io/en/latest/internvl3.0/multi_gpu_inference.html
+
+        # Determine device_map strategy
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+            # Multi-GPU: Use custom split_model for optimal distribution
+            custom_device_map = split_model(model_path)
+            if verbose:
+                rprint(f"[blue]🔄 Multi-GPU detected ({torch.cuda.device_count()} GPUs) - using custom device_map[/blue]")
+                rprint("[cyan]   Vision model on GPU 0, LLM layers distributed across GPUs[/cyan]")
+        else:
+            # Single GPU or auto: Use device_map parameter
+            custom_device_map = device_map
+            if verbose:
+                rprint(f"[blue]📍 Using device_map: {device_map}[/blue]")
+
         model_kwargs = {
             "torch_dtype": torch_dtype_obj,
             "low_cpu_mem_usage": low_cpu_mem_usage,
             "trust_remote_code": True,
+            "device_map": custom_device_map,  # Always set device_map
         }
 
         # Add quantization config if enabled
         if quantization_config is not None:
             model_kwargs["quantization_config"] = quantization_config
-            # Quantized models need device_map for proper placement
-            model_kwargs["device_map"] = device_map
             if verbose:
-                rprint("[yellow]Using device_map='auto' for quantized model distribution[/yellow]")
+                rprint("[yellow]Using 8-bit quantization with device_map distribution[/yellow]")
+        else:
+            if verbose:
+                rprint("[green]Using full precision with device_map distribution[/green]")
 
         # Add Flash Attention only if requested (not supported on V100)
         if use_flash_attn:
@@ -394,15 +457,11 @@ def load_internvl3_model(
         elif verbose:
             rprint("[yellow]⚠️ Flash Attention disabled (V100 compatible)[/yellow]")
 
-        # Load model
+        # Load model - device_map handles all GPU placement
         model = AutoModel.from_pretrained(model_path, **model_kwargs).eval()
 
-        # For non-quantized models, use .cuda() to place on single GPU (official pattern)
-        # For quantized models, device_map handles placement
-        if quantization_config is None and torch.cuda.is_available():
-            model = model.cuda()
-            if verbose:
-                rprint("[green]✅ Model placed on single GPU (official pattern)[/green]")
+        if verbose:
+            rprint("[green]✅ Model loaded with device_map - GPU distribution handled automatically[/green]")
 
         # Load tokenizer
         if verbose:
