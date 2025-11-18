@@ -443,9 +443,9 @@ class VisionLanguageModel(BaseChatModel):
         except Exception:
             pixel_values = pixel_values.to(dtype=torch.bfloat16)
 
-        # Move to correct device (handles multi-GPU)
-        model_device = self._get_model_device()
-        pixel_values = pixel_values.to(model_device)
+        # Move to cuda:0 explicitly (InternVL3 vision model is always on cuda:0)
+        target_device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        pixel_values = pixel_values.to(target_device)
 
         return pixel_values
 
@@ -465,11 +465,13 @@ class VisionLanguageModel(BaseChatModel):
         pixel_values = self._load_internvl_image(image, max_num=12)
 
         # CRITICAL: Backup device check (prevents multi-GPU errors)
-        model_device = self._get_model_device()
-        if pixel_values.device != model_device:
-            pixel_values = pixel_values.to(model_device)
+        # Force to cuda:0 for multi-GPU setups (InternVL3 vision model is always on cuda:0)
+        import torch
+        target_device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        if pixel_values.device != target_device:
+            pixel_values = pixel_values.to(target_device)
             if self.verbose:
-                print(f"🔧 BACKUP_DEVICE_FIX: Moved tensor to {model_device}")
+                print(f"🔧 BACKUP_DEVICE_FIX: Moved tensor from {pixel_values.device} to {target_device}")
 
         # Create generation config as dictionary (InternVL3 requirement)
         generation_config = {
