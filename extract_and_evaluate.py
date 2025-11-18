@@ -70,6 +70,45 @@ from common.prompt_registry import get_registry
 console = Console()
 
 
+def detect_document_type(image_path: Path, llm) -> str:
+    """
+    Detect document type using specialized detection prompt.
+
+    Args:
+        image_path: Path to image file
+        llm: VisionLanguageModel instance
+
+    Returns:
+        Detected document type: "invoice", "receipt", or "bank_statement"
+    """
+    import yaml
+
+    # Load detection prompts
+    detection_yaml = Path(__file__).parent / "config" / "document_type_detection.yaml"
+    with detection_yaml.open('r') as f:
+        detection_config = yaml.safe_load(f)
+
+    # Get complex detection prompt (works slightly better)
+    prompt_text = detection_config["prompts"]["detection_complex"]["prompt"]
+
+    # Run detection
+    response = llm.invoke_with_image(
+        prompt=prompt_text,
+        image_path=str(image_path)
+    )
+
+    # Normalize response using type mappings
+    response_lower = response.strip().lower()
+    type_mappings = detection_config["type_mappings"]
+
+    for variant, canonical in type_mappings.items():
+        if variant in response_lower:
+            return canonical.lower()  # Return lowercase: invoice, receipt, bank_statement
+
+    # Fallback
+    return detection_config["settings"]["fallback_type"].lower()
+
+
 def parse_extraction_output(text: str) -> Dict[str, str]:
     """
     Parse LLM output text into structured field dictionary.
@@ -525,6 +564,16 @@ def process_document(
         do_sample=False,  # Greedy decoding (deterministic)
     )
 
+    # Phase 0: Detect document type using specialized prompt
+    if show_extraction:
+        console.print("\n[bold cyan]Phase 0: Document Type Detection[/bold cyan]")
+
+    document_type = detect_document_type(image_path, llm)
+
+    if show_extraction:
+        doc_type_display = document_type.replace("_", " ").title()
+        console.print(f"Detected type: [green]{doc_type_display}[/green]")
+
     # Phase 1: Get model-specific prompt info
     if show_extraction:
         console.print("\n[bold cyan]Phase 1: Model-specific prompts[/bold cyan]")
@@ -536,11 +585,9 @@ def process_document(
         console.print(f"Verbosity: [green]{model_info.get('verbosity', 'default')}[/green]")
 
     raw_response = None
-    document_type = None
 
     # For bank statements: classify structure first
-    if "bank" in image_path.stem.lower() or "statement" in image_path.stem.lower():
-        document_type = "bank_statement"
+    if document_type == "bank_statement":
         # Phase 2: Classify structure
         structure_result = classify_document_structure(image_path, llm, model_name)
 
@@ -558,13 +605,7 @@ def process_document(
     else:
         # For invoices/receipts: use standard single-pass
         if show_extraction:
-            console.print("\n[bold cyan]Standard extraction (invoice/receipt)[/bold cyan]")
-
-        # Detect document type from image name or use invoice as default
-        if "receipt" in image_path.stem.lower():
-            document_type = "receipt"
-        else:
-            document_type = "invoice"
+            console.print(f"\n[bold cyan]Standard extraction ({document_type})[/bold cyan]")
 
         prompt = registry.get_prompt(
             document_type=document_type,
