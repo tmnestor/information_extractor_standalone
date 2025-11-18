@@ -80,7 +80,7 @@ class VisionLanguageModel(BaseChatModel):
 
     # Private attributes (not validated by Pydantic)
     _model: Any = PrivateAttr()
-    _processor: AutoProcessor = PrivateAttr()
+    _processor: Any = PrivateAttr()  # Can be AutoProcessor (Llama) or AutoTokenizer (InternVL3)
     _total_tokens_used: int = PrivateAttr(default=0)
     _api_calls: int = PrivateAttr(default=0)
     _is_llama: bool = PrivateAttr(default=False)
@@ -102,7 +102,7 @@ class VisionLanguageModel(BaseChatModel):
 
         Args:
             model: Loaded model instance (Llama or InternVL3)
-            processor: Loaded processor instance
+            processor: Loaded processor (Llama) or tokenizer (InternVL3) instance
             model_id: Model identifier for tracking
             max_new_tokens: Maximum tokens to generate
             do_sample: Whether to use sampling
@@ -330,7 +330,7 @@ class VisionLanguageModel(BaseChatModel):
 
     def _generate_internvl(self, prompt: str, image: Image.Image, **kwargs: Any) -> str:
         """
-        Generate text using InternVL3 (no chat template needed).
+        Generate text using InternVL3 with .chat() method.
 
         Args:
             prompt: Text prompt
@@ -340,43 +340,35 @@ class VisionLanguageModel(BaseChatModel):
         Returns:
             str: Generated text
         """
-        # Prepare inputs (InternVL3 uses direct format)
-        inputs = self._processor(
-            text=prompt,
-            images=image,
-            return_tensors="pt"
-        ).to(self._model.device)
+        import torch
+        from transformers import GenerationConfig
 
-        # Generation parameters
-        gen_kwargs = {
-            "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
-            "temperature": kwargs.get("temperature", self.temperature),
-            "do_sample": kwargs.get("do_sample", self.do_sample),
-        }
-        if self.top_p is not None:
-            gen_kwargs["top_p"] = kwargs.get("top_p", self.top_p)
+        # Prepare image for InternVL3 (load and prepare pixel_values)
+        pixel_values = self._model.load_image(image, max_num=12).to(
+            torch.bfloat16
+        ).cuda()
 
-        # Generate
-        with torch.no_grad():
-            output_ids = self._model.generate(
-                **inputs,
-                **gen_kwargs
-            )
+        # Create generation config
+        generation_config = GenerationConfig(
+            max_new_tokens=kwargs.get("max_new_tokens", self.max_new_tokens),
+            do_sample=kwargs.get("do_sample", self.do_sample),
+        )
 
-        # Decode
-        generated_text = self._processor.batch_decode(
-            output_ids,
-            skip_special_tokens=True
-        )[0]
+        # Add temperature only if do_sample is True
+        if generation_config.do_sample:
+            generation_config.temperature = kwargs.get("temperature", self.temperature)
+            if self.top_p is not None:
+                generation_config.top_p = kwargs.get("top_p", self.top_p)
 
-        # Remove the prompt from output if present
-        if prompt in generated_text:
-            generated_text = generated_text.replace(prompt, "").strip()
+        # Use InternVL3's chat method
+        response = self._model.chat(
+            tokenizer=self._processor,  # InternVL3 uses tokenizer
+            pixel_values=pixel_values,
+            question=prompt,
+            generation_config=generation_config
+        )
 
-        # Update token count
-        self._total_tokens_used += output_ids.shape[1]
-
-        return generated_text.strip()
+        return response.strip()
 
     def invoke_with_image(
         self,
