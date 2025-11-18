@@ -69,8 +69,21 @@ models:
     use_quantization: true
     description: "InternVL3 8B - Quantized for V100 compatibility"
 
+  internvl3_5-8b:
+    model_id: "OpenGVLab/InternVL3_5-8B"
+    device: "cuda"
+    device_map: "auto"
+    max_new_tokens: 2048
+    temperature: 0.0
+    do_sample: false
+    load_in_8bit: false
+    load_in_4bit: false
+    torch_dtype: "bfloat16"
+    use_quantization: false
+    description: "InternVL3.5 8B - Latest version, improved performance"
+
 # Default model to use when none specified
-default_model: "llama-3.2-11b-vision-8bit"
+default_model: "llama-3.2-11b-vision"
 
 # Model paths configuration
 # UPDATE THESE PATHS for your environment
@@ -87,7 +100,7 @@ model_paths:
     # local: "~/models/Llama-3.2-11B-Vision-Instruct"
 
   internvl3:
-    production: "/path/to/InternVL3-8B"  # UPDATE THIS PATH (or InternVL3-2B)
+    production: "/home/jovyan/nfs_share/models/InternVL3_5-8B"
     # development: "/nfs_share/models/InternVL3-8B"
 
 # Active deployment environment
