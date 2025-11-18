@@ -606,34 +606,29 @@ class VisionLanguageModelFactory:
         # CRITICAL: Pass YAML config parameters to model loader
         # InternVL3 loader needs use_quantization, torch_dtype, device_map, etc.
         # Llama loader uses simpler signature (just model_path)
-        model_config_dict = model_config.to_dict()
 
-        # Try to call with full config first (InternVL3 style)
-        try:
-            import inspect
-            loader_signature = inspect.signature(model_loader_func)
-            loader_params = set(loader_signature.parameters.keys())
+        import inspect
+        loader_signature = inspect.signature(model_loader_func)
+        loader_params = set(loader_signature.parameters.keys())
 
-            # Build kwargs for model loader using only recognized parameters
-            loader_kwargs = {}
-            if 'use_quantization' in loader_params:
-                loader_kwargs['use_quantization'] = model_config_dict.get('use_quantization', False)
-            if 'torch_dtype' in loader_params:
-                loader_kwargs['torch_dtype'] = model_config_dict.get('torch_dtype', 'bfloat16')
-            if 'device_map' in loader_params:
-                loader_kwargs['device_map'] = model_config_dict.get('device_map', 'auto')
-            if 'max_new_tokens' in loader_params:
-                loader_kwargs['max_new_tokens'] = model_config_dict.get('max_new_tokens', 2048)
-            if 'verbose' in loader_params:
-                loader_kwargs['verbose'] = override_kwargs.get("verbose", True)
+        # Build kwargs for model loader using only recognized parameters
+        # IMPORTANT: Access raw attributes, not to_dict() which converts strings to PyTorch objects
+        loader_kwargs = {}
+        if 'use_quantization' in loader_params:
+            loader_kwargs['use_quantization'] = getattr(model_config, 'use_quantization', False)
+        if 'torch_dtype' in loader_params:
+            # CRITICAL: Pass STRING, not torch.dtype object
+            loader_kwargs['torch_dtype'] = getattr(model_config, 'torch_dtype', 'bfloat16')
+        if 'device_map' in loader_params:
+            loader_kwargs['device_map'] = getattr(model_config, 'device_map', 'auto')
+        if 'max_new_tokens' in loader_params:
+            loader_kwargs['max_new_tokens'] = getattr(model_config, 'max_new_tokens', 2048)
+        if 'verbose' in loader_params:
+            loader_kwargs['verbose'] = override_kwargs.get("verbose", True)
 
-            # Call model loader with extracted parameters
-            model, processor = model_loader_func(model_config.model_id, **loader_kwargs)
-
-        except Exception as e:
-            # Fallback to simple signature (Llama style)
-            print(f"Warning: Could not call loader with full config: {e}")
-            model, processor = model_loader_func(model_config.model_id)
+        # Call model loader with extracted parameters
+        # If this fails, we want to see the real error, not silently fall back to defaults
+        model, processor = model_loader_func(model_config.model_id, **loader_kwargs)
 
         # Merge YAML config with overrides
         config_dict = model_config.to_dict()
