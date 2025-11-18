@@ -44,6 +44,7 @@ class LangChainPromptManager:
         field_loader: Optional[SimpleFieldLoader] = None,
         use_yaml_config: bool = True,
         system_mode: str = "expert",
+        model_name: Optional[str] = None,
     ):
         """
         Initialize prompt manager.
@@ -52,10 +53,12 @@ class LangChainPromptManager:
             field_loader: Field definitions loader (creates if None)
             use_yaml_config: Load prompts from config/prompts.yaml
             system_mode: System prompt mode (expert, structured, precise, flexible, strict)
+            model_name: Model name for model-specific prompts (e.g., 'llama-3.2-vision', 'internvl3')
         """
         self.field_loader = field_loader or SimpleFieldLoader()
         self.use_yaml_config = use_yaml_config
         self.system_mode = system_mode
+        self.model_name = model_name
 
         # Cache for generated prompts
         self._prompt_cache: Dict[str, ChatPromptTemplate] = {}
@@ -134,6 +137,7 @@ RULES:
         self,
         document_type: str,
         include_format_instructions: bool = True,
+        model_name: Optional[str] = None,
     ) -> ChatPromptTemplate:
         """
         Get extraction prompt for document type.
@@ -141,19 +145,23 @@ RULES:
         Args:
             document_type: Type of document (invoice, receipt, bank_statement)
             include_format_instructions: Include output format in prompt
+            model_name: Override model name for this prompt (uses instance default if None)
 
         Returns:
             ChatPromptTemplate configured for this document type
 
         Example:
-            >>> prompt = manager.get_extraction_prompt("invoice")
+            >>> prompt = manager.get_extraction_prompt("invoice", model_name="llama-3.2-vision")
             >>> messages = prompt.format_messages()
         """
-        cache_key = f"{document_type}_{include_format_instructions}"
+        # Use provided model_name or fall back to instance model_name
+        effective_model = model_name or self.model_name
+
+        cache_key = f"{document_type}_{include_format_instructions}_{effective_model}"
 
         if cache_key not in self._prompt_cache:
             self._prompt_cache[cache_key] = self._build_extraction_prompt(
-                document_type, include_format_instructions
+                document_type, include_format_instructions, effective_model
             )
 
         return self._prompt_cache[cache_key]
@@ -174,6 +182,7 @@ RULES:
         self,
         document_type: str,
         include_format_instructions: bool,
+        model_name: Optional[str] = None,
     ) -> ChatPromptTemplate:
         """
         Build extraction prompt from field definitions.
@@ -181,6 +190,7 @@ RULES:
         Args:
             document_type: Type of document
             include_format_instructions: Include format section
+            model_name: Model name for model-specific instructions
 
         Returns:
             ChatPromptTemplate instance
@@ -197,8 +207,8 @@ RULES:
 
         field_format = "\n".join(field_lines)
 
-        # Get document-specific instructions
-        doc_instructions = self._get_document_instructions(document_type)
+        # Get document-specific instructions (model-aware)
+        doc_instructions = self._get_document_instructions(document_type, model_name=model_name)
 
         # Build prompt components
         # Use configured system mode
@@ -272,17 +282,52 @@ Respond with ONLY the document type line - no explanations."""
 
         return ChatPromptTemplate.from_messages([system_message, human_message])
 
-    def _get_document_instructions(self, document_type: str) -> str:
+    def _get_document_instructions(
+        self,
+        document_type: str,
+        model_name: Optional[str] = None
+    ) -> str:
         """
-        Get document-type-specific instructions.
+        Get document-type-specific instructions with model adaptation.
 
         Args:
             document_type: Type of document
+            model_name: Model name for model-specific instructions
 
         Returns:
-            Additional instructions for this document type
+            Instructions tailored to document type and model
         """
-        # Try to load from YAML config first
+        # Try model-specific instructions first (if model_name provided)
+        if model_name and self.use_yaml_config and hasattr(self, '_yaml_config'):
+            try:
+                # Check if we should use model-specific instructions
+                use_model_specific = self._yaml_config.config.get(
+                    'use_model_specific_instructions', False
+                )
+
+                if use_model_specific:
+                    # Try exact model match first
+                    model_instructions = self._yaml_config.config.get(
+                        'model_specific_document_instructions', {}
+                    ).get(model_name, {}).get(document_type)
+
+                    if model_instructions:
+                        return model_instructions
+
+                    # Try model family match (e.g., llama-3.2-11b-vision → llama-3.2-vision)
+                    model_family = self._get_model_family(model_name)
+                    if model_family and model_family != model_name:
+                        family_instructions = self._yaml_config.config.get(
+                            'model_specific_document_instructions', {}
+                        ).get(model_family, {}).get(document_type)
+
+                        if family_instructions:
+                            return family_instructions
+            except Exception as e:
+                print(f"Warning: Could not load model-specific instructions: {e}")
+                pass  # Fall back to default
+
+        # Fall back to standard document instructions
         if self.use_yaml_config and hasattr(self, '_yaml_config'):
             try:
                 instructions = self._yaml_config.get_document_instructions(document_type)
@@ -313,6 +358,74 @@ Respond with ONLY the document type line - no explanations."""
         }
 
         return instructions.get(document_type, "")
+
+    def _get_model_family(self, model_name: str) -> Optional[str]:
+        """
+        Get model family from specific model name.
+
+        Maps specific model variants to their family for prompt selection.
+
+        Args:
+            model_name: Specific model name (e.g., 'llama-3.2-11b-vision-8bit')
+
+        Returns:
+            Model family name (e.g., 'llama-3.2-vision') or None
+
+        Examples:
+            >>> manager._get_model_family('llama-3.2-11b-vision')
+            'llama-3.2-vision'
+            >>> manager._get_model_family('internvl3-8b-quantized')
+            'internvl3'
+        """
+        if not model_name:
+            return None
+
+        # Llama family normalization
+        if 'llama' in model_name.lower():
+            # All Llama 3.2 vision variants use the same prompts
+            if '3.2' in model_name:
+                return 'llama-3.2-vision'
+            return 'llama-3.2-vision'
+
+        # InternVL3 family normalization
+        if 'internvl3' in model_name.lower() or 'intern-vl3' in model_name.lower():
+            # All InternVL3 variants can use the base internvl3 prompts
+            return 'internvl3'
+
+        # No family mapping found
+        return None
+
+    def get_model_info(self, model_name: str) -> Dict:
+        """
+        Get model adaptation info from configuration.
+
+        Args:
+            model_name: Model name
+
+        Returns:
+            Dictionary with model characteristics or empty dict
+
+        Example:
+            >>> info = manager.get_model_info('llama-3.2-vision')
+            >>> info['style']
+            'step-by-step'
+        """
+        if self.use_yaml_config and hasattr(self, '_yaml_config'):
+            try:
+                model_adaptations = self._yaml_config.config.get('model_adaptations', {})
+
+                # Try exact match first
+                if model_name in model_adaptations:
+                    return model_adaptations[model_name]
+
+                # Try family match
+                family = self._get_model_family(model_name)
+                if family and family in model_adaptations:
+                    return model_adaptations[family]
+            except Exception:
+                pass
+
+        return {}
 
     def load_yaml_prompt(self, yaml_file: Path, prompt_key: str) -> str:
         """
@@ -421,21 +534,27 @@ class PromptSelector:
         document_type: str,
         use_langchain: bool = True,
         yaml_file: Optional[Path] = None,
+        model_name: Optional[str] = None,
     ) -> ChatPromptTemplate:
         """
-        Select appropriate prompt for document type.
+        Select appropriate prompt for document type with model-aware selection.
 
         Args:
             document_type: Type of document
             use_langchain: Use LangChain-generated prompts (vs YAML)
             yaml_file: Override YAML file path
+            model_name: Model name for model-specific prompts
 
         Returns:
             ChatPromptTemplate instance
 
         Example:
-            >>> # Use new LangChain prompts
-            >>> prompt = selector.select_prompt("invoice", use_langchain=True)
+            >>> # Use new LangChain prompts with model-specific instructions
+            >>> prompt = selector.select_prompt(
+            ...     "invoice",
+            ...     use_langchain=True,
+            ...     model_name="llama-3.2-vision"
+            ... )
             >>>
             >>> # Use legacy YAML prompts
             >>> prompt = selector.select_prompt(
@@ -445,8 +564,11 @@ class PromptSelector:
             ... )
         """
         if use_langchain:
-            # Use dynamically generated LangChain prompts
-            return self.prompt_manager.get_extraction_prompt(document_type)
+            # Use dynamically generated LangChain prompts with model awareness
+            return self.prompt_manager.get_extraction_prompt(
+                document_type,
+                model_name=model_name
+            )
         else:
             # Use legacy YAML prompts
             if not yaml_file:
@@ -464,26 +586,36 @@ def get_extraction_prompt(
     document_type: str,
     use_langchain: bool = True,
     field_loader: Optional[SimpleFieldLoader] = None,
+    model_name: Optional[str] = None,
 ) -> ChatPromptTemplate:
     """
-    Quick function to get extraction prompt.
+    Quick function to get extraction prompt with model awareness.
 
     Args:
         document_type: Type of document
         use_langchain: Use LangChain prompts vs YAML
         field_loader: Custom field loader
+        model_name: Model name for model-specific prompts
 
     Returns:
         ChatPromptTemplate instance
 
     Example:
-        >>> prompt = get_extraction_prompt("invoice")
+        >>> # Get Llama-optimized prompt
+        >>> prompt = get_extraction_prompt("invoice", model_name="llama-3.2-vision")
+        >>> messages = prompt.format_messages()
+        >>>
+        >>> # Get InternVL3-optimized prompt
+        >>> prompt = get_extraction_prompt("invoice", model_name="internvl3")
         >>> messages = prompt.format_messages()
     """
-    manager = LangChainPromptManager(field_loader=field_loader)
+    manager = LangChainPromptManager(
+        field_loader=field_loader,
+        model_name=model_name
+    )
 
     if use_langchain:
-        return manager.get_extraction_prompt(document_type)
+        return manager.get_extraction_prompt(document_type, model_name=model_name)
     else:
         selector = PromptSelector(manager)
         return selector.select_prompt(document_type, use_langchain=False)

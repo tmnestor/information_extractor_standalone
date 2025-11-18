@@ -95,6 +95,298 @@ field_format_guidelines:
   boolean: "true or false (lowercase)"
   abn: "XX XXX XXX XXX (with spaces)"
 
+# ============================================================================
+# MODEL-SPECIFIC ADAPTATIONS (Phase 1)
+# ============================================================================
+
+# Model characteristics and optimization settings
+model_adaptations:
+  llama-3.2-vision:
+    style: "step-by-step"
+    instruction_format: "numbered_steps"
+    verbosity: "detailed"
+    reasoning_capability: "high"
+    preferred_approach: "explicit_guidance"
+
+  llama-3.2-11b-vision:
+    style: "step-by-step"
+    instruction_format: "numbered_steps"
+    verbosity: "detailed"
+    reasoning_capability: "high"
+    preferred_approach: "explicit_guidance"
+
+  llama-3.2-11b-vision-8bit:
+    style: "step-by-step"
+    instruction_format: "numbered_steps"
+    verbosity: "detailed"
+    reasoning_capability: "high"
+    preferred_approach: "explicit_guidance"
+
+  internvl3:
+    style: "direct"
+    instruction_format: "concise_list"
+    verbosity: "minimal"
+    reasoning_capability: "medium"
+    preferred_approach: "direct_extraction"
+
+  internvl3-2b:
+    style: "direct"
+    instruction_format: "concise_list"
+    verbosity: "minimal"
+    reasoning_capability: "medium"
+    preferred_approach: "direct_extraction"
+
+  internvl3-8b:
+    style: "direct"
+    instruction_format: "structured_list"
+    verbosity: "moderate"
+    reasoning_capability: "high"
+    preferred_approach: "guided_extraction"
+
+  internvl3-8b-quantized:
+    style: "direct"
+    instruction_format: "structured_list"
+    verbosity: "moderate"
+    reasoning_capability: "high"
+    preferred_approach: "guided_extraction"
+
+# Model-specific document extraction instructions
+model_specific_document_instructions:
+  # Llama models - verbose step-by-step approach
+  llama-3.2-vision:
+    invoice: |
+      ## STEP-BY-STEP EXTRACTION:
+
+      ### STEP 1: Document Identification
+      Look at the header - is it an INVOICE, BILL, QUOTE, or ESTIMATE?
+      DOCUMENT_TYPE: [INVOICE or NOT_FOUND]
+
+      ### STEP 2: Business Information (Usually at the top)
+      Find the supplier/business details in the document header:
+      BUSINESS_ABN: [Find ABN number - must be exactly 11 digits (e.g., 12 345 678 901) or NOT_FOUND]
+      SUPPLIER_NAME: [Company name providing goods/services from document header or NOT_FOUND]
+      BUSINESS_ADDRESS: [Complete business address (can be multi-line) or NOT_FOUND]
+
+      ### STEP 3: Customer Information (Look for "Bill To" or "Customer" section)
+      Find the customer/client details:
+      PAYER_NAME: [Customer/client name or NOT_FOUND]
+      PAYER_ADDRESS: [Customer/client address or NOT_FOUND]
+
+      ### STEP 4: Date Information
+      INVOICE_DATE: [Date of invoice/bill in DD/MM/YYYY format or NOT_FOUND]
+
+      ### STEP 5: Line Items (From the itemized table/list)
+      Count the number of line items and extract each one systematically:
+      LINE_ITEM_DESCRIPTIONS: [Item 1 description | Item 2 description | etc. or NOT_FOUND]
+      LINE_ITEM_QUANTITIES: [Qty 1 | Qty 2 | etc. (match description order) or NOT_FOUND]
+      LINE_ITEM_PRICES: [$Unit price 1 | $Unit price 2 | etc. or NOT_FOUND]
+      LINE_ITEM_TOTAL_PRICES: [$Total 1 | $Total 2 | etc. or NOT_FOUND]
+
+      ### STEP 6: Tax and Totals (Usually at the bottom)
+      Find the financial summary section:
+      IS_GST_INCLUDED: [Look for GST/tax line - answer "true" if present, "false" if not shown]
+      GST_AMOUNT: [Extract GST/tax amount with $ symbol or NOT_FOUND]
+      TOTAL_AMOUNT: [Extract final total/amount due with $ symbol or NOT_FOUND]
+
+    receipt: |
+      ## STEP-BY-STEP RECEIPT EXTRACTION:
+
+      ### STEP 1: Document Type
+      DOCUMENT_TYPE: [Should be RECEIPT for payment confirmations or NOT_FOUND]
+
+      ### STEP 2: Merchant Information (Top of receipt)
+      Find the store/merchant details at the top:
+      BUSINESS_ABN: [Look for ABN - exactly 11 digits (often not on receipts) or NOT_FOUND]
+      SUPPLIER_NAME: [Store/restaurant/merchant name or NOT_FOUND]
+      BUSINESS_ADDRESS: [Store address if shown (may be partial) or NOT_FOUND]
+
+      ### STEP 3: Customer Information (Usually minimal or absent)
+      Check if customer details are shown (rare on receipts):
+      PAYER_NAME: [Customer name if shown or NOT_FOUND]
+      PAYER_ADDRESS: [Customer address if shown or NOT_FOUND]
+
+      ### STEP 4: Transaction Date
+      INVOICE_DATE: [Date of purchase/transaction in DD/MM/YYYY format or NOT_FOUND]
+
+      ### STEP 5: Items Purchased
+      Look at the itemized list and extract systematically:
+      LINE_ITEM_DESCRIPTIONS: [Item 1 | Item 2 | etc. or NOT_FOUND]
+      LINE_ITEM_QUANTITIES: [Qty 1 | Qty 2 | etc. (use "1" if not shown) or NOT_FOUND]
+      LINE_ITEM_PRICES: [$Price 1 | $Price 2 | etc. or NOT_FOUND]
+      LINE_ITEM_TOTAL_PRICES: [$Total 1 | $Total 2 | etc. or NOT_FOUND]
+
+      ### STEP 6: Payment Summary
+      Find the payment totals (usually at bottom):
+      IS_GST_INCLUDED: [Look for GST/tax line - "true" if shown, "false" if not]
+      GST_AMOUNT: [GST/tax amount with $ symbol if shown or NOT_FOUND]
+      TOTAL_AMOUNT: [Final total/amount paid with $ symbol or NOT_FOUND]
+
+    bank_statement: |
+      ## STEP-BY-STEP BANK STATEMENT EXTRACTION:
+
+      CRITICAL: Extract ONLY DEBIT/WITHDRAWAL transactions (money OUT) for expense tracking.
+      IGNORE deposits and credits (money IN) - we only need expenses.
+
+      ### STEP 1 - LOCATE TRANSACTION TABLE:
+      Focus on the main transaction table (usually center/body area).
+      Columns: Date | Description | Debit/Withdrawal | Credit/Deposit | Balance
+      Ignore: Headers, footers, summaries, advertisements
+
+      ### STEP 2 - IDENTIFY DEBIT TRANSACTIONS:
+      TARGET COLUMNS: Date + Description + Debit/Withdrawal amount
+
+      For each row check:
+      - Has value in DEBIT/WITHDRAWAL column? → Extract this row
+      - Has value in CREDIT/DEPOSIT column only? → SKIP this row
+      - DEBIT keywords: withdrawal, payment, purchase, debit, fee, charge, ATM, EFTPOS
+      - CREDIT keywords to skip: deposit, credit, salary, transfer in, interest received
+
+      ### STEP 3 - EXTRACT ROW-BY-ROW:
+      For EACH debit row:
+      1. Extract DATE (DD/MM/YYYY format)
+      2. Extract DESCRIPTION (exact text)
+      3. Extract AMOUNT (with $ symbol)
+      4. Add to output with " | " separator
+
+      OUTPUT FORMAT:
+      DOCUMENT_TYPE: BANK_STATEMENT
+      STATEMENT_DATE_RANGE: [statement period or NOT_FOUND]
+      LINE_ITEM_DESCRIPTIONS: [debit_description1 | debit_description2 | etc.]
+      TRANSACTION_DATES: [DD/MM/YYYY | DD/MM/YYYY | etc.]
+      TRANSACTION_AMOUNTS_PAID: [debit1 | debit2 | etc.]
+
+  # InternVL3 models - concise direct approach
+  internvl3:
+    invoice: |
+      Extract ALL data from this invoice image. Respond in exact format below with actual values or NOT_FOUND.
+
+      DOCUMENT_TYPE: INVOICE
+      BUSINESS_ABN: NOT_FOUND
+      SUPPLIER_NAME: NOT_FOUND
+      BUSINESS_ADDRESS: NOT_FOUND
+      PAYER_NAME: NOT_FOUND
+      PAYER_ADDRESS: NOT_FOUND
+      INVOICE_DATE: NOT_FOUND
+      LINE_ITEM_DESCRIPTIONS: NOT_FOUND
+      LINE_ITEM_QUANTITIES: NOT_FOUND
+      LINE_ITEM_PRICES: NOT_FOUND
+      LINE_ITEM_TOTAL_PRICES: NOT_FOUND
+      IS_GST_INCLUDED: NOT_FOUND
+      GST_AMOUNT: NOT_FOUND
+      TOTAL_AMOUNT: NOT_FOUND
+
+      Instructions:
+      - Find ABN: 11 digits like "12 345 678 901"
+      - Find supplier: Business name at top
+      - Find customer: "Bill To" section
+      - Find date: Use DD/MM/YYYY format
+      - Find line items: List with " | " separator
+      - Find amounts: Include $ symbol
+      - Replace NOT_FOUND with actual values
+
+    receipt: |
+      Extract ALL data from this receipt image. Respond in exact format below with actual values or NOT_FOUND.
+
+      DOCUMENT_TYPE: RECEIPT
+      BUSINESS_ABN: NOT_FOUND
+      SUPPLIER_NAME: NOT_FOUND
+      BUSINESS_ADDRESS: NOT_FOUND
+      PAYER_NAME: NOT_FOUND
+      PAYER_ADDRESS: NOT_FOUND
+      INVOICE_DATE: NOT_FOUND
+      LINE_ITEM_DESCRIPTIONS: NOT_FOUND
+      LINE_ITEM_QUANTITIES: NOT_FOUND
+      LINE_ITEM_PRICES: NOT_FOUND
+      LINE_ITEM_TOTAL_PRICES: NOT_FOUND
+      IS_GST_INCLUDED: NOT_FOUND
+      GST_AMOUNT: NOT_FOUND
+      TOTAL_AMOUNT: NOT_FOUND
+
+      Instructions:
+      - Find ABN: 11 digits like "12 345 678 901"
+      - Find store: Business name at top
+      - Find transaction date: Use DD/MM/YYYY format
+      - Find purchased items: List with " | " separator
+      - Find amounts: Include $ symbol
+      - Replace NOT_FOUND with actual values
+
+    bank_statement: |
+      Extract structured data from this bank statement for taxpayer expense claims.
+
+      CRITICAL: Extract ONLY DEBIT/WITHDRAWAL transactions (money OUT).
+      IGNORE deposits and credits (money IN).
+
+      Output format (5 FIELDS):
+
+      DOCUMENT_TYPE: BANK_STATEMENT
+      STATEMENT_DATE_RANGE: NOT_FOUND
+      LINE_ITEM_DESCRIPTIONS: NOT_FOUND
+      TRANSACTION_DATES: NOT_FOUND
+      TRANSACTION_AMOUNTS_PAID: NOT_FOUND
+
+      Instructions:
+      - Statement period: Date range like "01/01/2025 to 31/01/2025"
+      - Transaction descriptions: DEBIT descriptions only, " | " separator
+      - Transaction dates: DEBIT dates only, DD/MM/YYYY, " | " separator
+      - Amounts paid: Debit amounts with $, " | " separator (money OUT only)
+      - Use NOT_FOUND for missing fields
+
+# Use model-specific instructions when appropriate (set by model_name parameter)
+use_model_specific_instructions: true
+
+# ============================================================================
+# BANK STATEMENT STRUCTURE-SPECIFIC PROMPTS (Phase 2)
+# ============================================================================
+
+# Structure-specific extraction prompts based on classified layout
+bank_statement_structure_prompts:
+  TABLE_3COL_SIMPLE:
+    extraction_focus: |
+      This bank statement has 3 columns: Date | Description | Amount
+      - Extract from single amount column (includes both debits and credits)
+      - Identify debits by negative signs or withdrawal indicators
+
+  TABLE_4COL_STANDARD:
+    extraction_focus: |
+      This bank statement has 4 columns: Date | Description | Debit | Credit
+      - Extract ONLY from Debit column (column 3)
+      - Skip Credit column entries
+      - Debit column is BEFORE Credit column
+
+  TABLE_4COL_REVERSED:
+    extraction_focus: |
+      This bank statement has REVERSED columns: Date | Description | Credit | Debit
+      - CRITICAL: Credit column comes BEFORE Debit column
+      - Extract from Debit column (column 4, rightmost before balance)
+
+  TABLE_5COL_STANDARD:
+    extraction_focus: |
+      This bank statement has 5 columns: Date | Transaction | Debit | Credit | Balance
+      - Extract from Debit column (column 3)
+      - Use Balance column for validation
+      - Running balance helps identify transaction order
+
+  TABLE_5COL_DETAILED:
+    extraction_focus: |
+      This bank statement has 5 columns with multi-row transactions
+      - "Particulars" column may have multiple detail lines
+      - Combine multi-line descriptions for same transaction
+      - Extract main transaction row debits
+
+  MOBILE_APP_DARK:
+    extraction_focus: |
+      This is a mobile banking app with dark theme
+      - No column headers
+      - Transactions grouped under day names (Wed, Thu, etc.)
+      - Extract from card-based layout
+
+  MOBILE_APP_LIGHT_INLINE:
+    extraction_focus: |
+      This is a mobile banking app with inline balance
+      - Look for "bal $XXX.XX" text pattern
+      - Category labels below descriptions
+      - Merchant logos may be present
+
 # Hot reload support
-version: "1.0.0"
-last_updated: "2025-11-17"
+version: "2.0.0"
+last_updated: "2025-11-19"

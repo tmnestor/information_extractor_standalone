@@ -1,0 +1,348 @@
+# Bank Statement Structure Classifier
+# Classifies bank statement layouts to enable structure-specific extraction
+# Based on LMM_POC bank_statement_structure_classifier.yaml
+
+name: "Bank Statement Structure Classifier"
+version: "2.0"
+task: "classification"
+description: "Classifies bank statement structural layout patterns for optimized extraction"
+
+# ============================================================================
+# CLASSIFICATION CATEGORIES
+# ============================================================================
+
+categories:
+  # TABLE FORMATS (Traditional bank statements with column headers)
+
+  TABLE_3COL_SIMPLE:
+    description: "3-column table: Date | Description | Amount"
+    confidence_keywords:
+      - "3 columns"
+      - "single amount column"
+      - "no separate debit/credit"
+    structure:
+      columns: 3
+      headers: ["Date", "Description", "Amount"]
+
+  TABLE_4COL_STANDARD:
+    description: "4-column table: Date | Description | Debit | Credit"
+    confidence_keywords:
+      - "4 columns"
+      - "Debit before Credit"
+      - "no balance column"
+    structure:
+      columns: 4
+      headers: ["Date", "Description/Transaction", "Debit", "Credit"]
+
+  TABLE_4COL_REVERSED:
+    description: "4-column table: Date | Description | Credit | Debit (reversed)"
+    confidence_keywords:
+      - "4 columns"
+      - "Credit before Debit"
+      - "reversed order"
+    structure:
+      columns: 4
+      headers: ["Date", "Description", "Credits", "Debits"]
+
+  TABLE_5COL_STANDARD:
+    description: "5-column table: Date | Transaction | Debit | Credit | Balance"
+    confidence_keywords:
+      - "5 columns"
+      - "running balance"
+      - "balance column"
+    structure:
+      columns: 5
+      headers: ["Date", "Transaction/Description", "Debit", "Credit", "Balance"]
+
+  TABLE_5COL_DETAILED:
+    description: "5-column table with 'Particulars' header and multi-row breakdowns"
+    confidence_keywords:
+      - "5 columns"
+      - "Particulars header"
+      - "multi-row transactions"
+    structure:
+      columns: 5
+      headers: ["Date", "Particulars", "Debits", "Credits", "Balance"]
+
+  TABLE_MULTICOLUMN:
+    description: "Extended table with 6+ columns (often includes location data)"
+    confidence_keywords:
+      - "more than 5 columns"
+      - "location columns"
+      - "extended format"
+    structure:
+      columns: 6+
+      headers: ["Date", "Description", "Location", "Debits", "Credits", "Balance"]
+
+  # MOBILE/APP FORMATS (No traditional column headers)
+
+  MOBILE_APP_DARK:
+    description: "Mobile banking app with dark theme and card-based layout"
+    confidence_keywords:
+      - "no column headers"
+      - "day names as sections"
+      - "card layout"
+      - "dark theme"
+    structure:
+      format: "mobile_cards"
+      sections: "date_grouped"
+
+  MOBILE_APP_LIGHT_INLINE:
+    description: "Mobile app with inline balance display and category labels"
+    confidence_keywords:
+      - "no column headers"
+      - "bal prefix"
+      - "category labels"
+      - "merchant logos"
+    structure:
+      format: "mobile_cards"
+      balance_display: "inline"
+
+  MOBILE_APP_LIGHT_SUMMARY:
+    description: "Mobile app with date headers showing daily summary"
+    confidence_keywords:
+      - "no column headers"
+      - "date with total"
+      - "chevron arrows"
+      - "daily summary"
+    structure:
+      format: "mobile_cards"
+      summary: "per_date"
+
+  # DATE-GROUPED FORMATS
+
+  DATE_GROUPED_FORMAT:
+    description: "Transactions grouped under date headers (not traditional table)"
+    confidence_keywords:
+      - "date headers"
+      - "grouped transactions"
+      - "no table grid"
+    structure:
+      format: "date_grouped"
+      table: false
+
+# ============================================================================
+# CLASSIFICATION PROMPT
+# ============================================================================
+
+classification_prompt: |
+  Analyze this bank statement image and classify its structural layout.
+
+  **STEP 1: Is this a traditional TABLE or a MOBILE APP interface?**
+
+  Look for:
+  - TABLE: Has column headers like "Date", "Description", "Debit", "Credit", "Balance"
+  - MOBILE APP: No column headers, card-based layout, touch-friendly UI elements
+
+  **STEP 2: If TABLE - Count the column headers from left to right:**
+
+  Start from the LEFTMOST header and count each column:
+  1. Leftmost column header: _______
+  2. Next column header: _______
+  3. Next column header: _______
+  4. Next column header: _______
+  5. Next column header (if exists): _______
+  6. Next column header (if exists): _______
+
+  Total column count: _______
+
+  **STEP 3: If MOBILE APP - Identify the layout pattern:**
+
+  Look for:
+  - Dark theme with card layout? → MOBILE_APP_DARK
+  - "bal $XXX" text inline? → MOBILE_APP_LIGHT_INLINE
+  - Date headers with daily totals? → MOBILE_APP_LIGHT_SUMMARY
+
+  **CRITICAL VERIFICATION:**
+
+  ⚠️ COMMON MISTAKE: Skipping the middle column!
+
+  If your column count goes: "Date" → "Debit" → "Credit"
+  YOU MISSED THE DESCRIPTION COLUMN IN THE MIDDLE!
+
+  Re-check: Is there text between "Date" and "Debit"?
+  - If YES: That's the Description/Transaction column - ADD IT to your count
+  - If NO: Your count is correct
+
+  **OUTPUT FORMAT:**
+
+  STRUCTURE_TYPE: [one of the categories above]
+  COLUMN_COUNT: [number, or "N/A" for mobile]
+  CONFIDENCE: [HIGH/MEDIUM/LOW]
+
+  REASONING: [Brief explanation of why this classification was chosen]
+
+# ============================================================================
+# EXTRACTION GUIDANCE BY STRUCTURE
+# ============================================================================
+
+extraction_guidance:
+  TABLE_3COL_SIMPLE:
+    approach: "single_pass"
+    columns_to_extract: ["date", "description", "amount"]
+    amount_handling: "single_column_mixed"
+
+  TABLE_4COL_STANDARD:
+    approach: "single_pass"
+    columns_to_extract: ["date", "description", "debit", "credit"]
+    amount_handling: "separate_debit_credit"
+    debit_position: 3
+    credit_position: 4
+
+  TABLE_4COL_REVERSED:
+    approach: "single_pass"
+    columns_to_extract: ["date", "description", "credit", "debit"]
+    amount_handling: "separate_credit_debit_reversed"
+    credit_position: 3
+    debit_position: 4
+
+  TABLE_5COL_STANDARD:
+    approach: "single_pass"
+    columns_to_extract: ["date", "description", "debit", "credit", "balance"]
+    amount_handling: "separate_with_balance"
+    balance_validation: true
+
+  TABLE_5COL_DETAILED:
+    approach: "multi_turn_recommended"
+    columns_to_extract: ["date", "particulars", "debits", "credits", "balance"]
+    amount_handling: "separate_with_balance"
+    multi_row_transactions: true
+
+  TABLE_MULTICOLUMN:
+    approach: "multi_turn_recommended"
+    columns_to_extract: ["date", "description", "location", "debits", "credits", "balance"]
+    amount_handling: "complex"
+
+  MOBILE_APP_DARK:
+    approach: "section_based"
+    extraction_pattern: "date_sections"
+    amount_handling: "card_based"
+
+  MOBILE_APP_LIGHT_INLINE:
+    approach: "card_based"
+    extraction_pattern: "sequential_cards"
+    balance_handling: "inline_extraction"
+
+  MOBILE_APP_LIGHT_SUMMARY:
+    approach: "section_based"
+    extraction_pattern: "date_with_summary"
+    validation: "sum_daily_totals"
+
+  DATE_GROUPED_FORMAT:
+    approach: "section_based"
+    extraction_pattern: "date_grouped"
+    amount_handling: "per_date_group"
+
+# ============================================================================
+# CONFIDENCE SCORING
+# ============================================================================
+
+confidence_rules:
+  HIGH:
+    - "Clear column headers visible"
+    - "Column count matches category exactly"
+    - "Standard bank terminology used"
+
+  MEDIUM:
+    - "Column headers partially visible"
+    - "Some ambiguity in structure"
+    - "Non-standard formatting"
+
+  LOW:
+    - "Poor image quality"
+    - "Headers unclear or cut off"
+    - "Uncertain classification"
+
+# ============================================================================
+# MODEL-SPECIFIC CLASSIFICATION PROMPTS
+# ============================================================================
+
+model_specific_prompts:
+  llama-3.2-vision:
+    # Verbose step-by-step classification for Llama
+    prompt: |
+      ## BANK STATEMENT STRUCTURE CLASSIFICATION
+
+      ### STEP 1: Identify Interface Type
+
+      Look at this bank statement carefully.
+
+      Question 1: Do you see column headers (like "Date", "Description", "Debit", "Credit")?
+      - If YES → This is a TABLE format (proceed to STEP 2)
+      - If NO → This is a MOBILE APP format (proceed to STEP 3)
+
+      ### STEP 2: Count Table Columns (ONLY if TABLE)
+
+      Start from the LEFTMOST column header.
+      Count each header moving RIGHT:
+
+      Position 1 (leftmost): What is the first column header text?
+      Position 2: Moving right, what is the next column header?
+      Position 3: Moving right, what is the next column header?
+      Position 4: Moving right, what is the next column header?
+      Position 5: Moving right, is there another column header?
+      Position 6: Moving right, is there another column header?
+
+      VERIFICATION: Did you count ___ columns total?
+
+      CRITICAL: If you counted "Date" then immediately "Debit" or "Credit",
+      you MISSED the description column! Go back and add it.
+
+      Based on column count:
+      - 3 columns → TABLE_3COL_SIMPLE
+      - 4 columns → TABLE_4COL_STANDARD (or REVERSED if Credits before Debits)
+      - 5 columns → TABLE_5COL_STANDARD (or DETAILED if "Particulars" header)
+      - 6+ columns → TABLE_MULTICOLUMN
+
+      ### STEP 3: Identify Mobile Format (ONLY if MOBILE APP)
+
+      Look for these patterns:
+      - Dark background with day names as headers (Wed, Thu)? → MOBILE_APP_DARK
+      - Text "bal $XXX.XX" shown inline? → MOBILE_APP_LIGHT_INLINE
+      - Date headers with daily total amounts? → MOBILE_APP_LIGHT_SUMMARY
+
+      ### FINAL OUTPUT:
+
+      STRUCTURE_TYPE: [your classification]
+      COLUMN_COUNT: [number or N/A]
+      CONFIDENCE: [HIGH/MEDIUM/LOW]
+      REASONING: [explain your classification choice]
+
+  internvl3:
+    # Concise classification for InternVL3
+    prompt: |
+      Classify this bank statement structure.
+
+      **Check for column headers:**
+      - Headers visible? → Count columns (3/4/5/6+) → TABLE format
+      - No headers? → Check layout pattern → MOBILE APP format
+
+      **Table formats:**
+      - 3 columns: TABLE_3COL_SIMPLE
+      - 4 columns (Debit, Credit): TABLE_4COL_STANDARD
+      - 4 columns (Credit, Debit): TABLE_4COL_REVERSED
+      - 5 columns (with Balance): TABLE_5COL_STANDARD
+      - 5 columns (with Particulars): TABLE_5COL_DETAILED
+      - 6+ columns: TABLE_MULTICOLUMN
+
+      **Mobile formats:**
+      - Dark theme, day names: MOBILE_APP_DARK
+      - "bal $XXX" inline: MOBILE_APP_LIGHT_INLINE
+      - Date with totals: MOBILE_APP_LIGHT_SUMMARY
+
+      Output:
+      STRUCTURE_TYPE: [category]
+      COLUMN_COUNT: [number or N/A]
+      CONFIDENCE: [HIGH/MEDIUM/LOW]
+      REASONING: [1-2 sentences]
+
+# ============================================================================
+# METADATA
+# ============================================================================
+
+metadata:
+  created: "2025-11-19"
+  based_on: "LMM_POC/bank_statement_structure_classifier.yaml"
+  version: "2.0"
+  categories_count: 10
+  supports_model_specific: true
