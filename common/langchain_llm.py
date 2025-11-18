@@ -457,10 +457,18 @@ class VisionLanguageModel(BaseChatModel):
         # Prepare image for InternVL3
         pixel_values = self._load_internvl_image(image, max_num=12)
 
+        # CRITICAL: Backup device check (prevents multi-GPU errors)
+        model_device = self._get_model_device()
+        if pixel_values.device != model_device:
+            pixel_values = pixel_values.to(model_device)
+            if self.verbose:
+                print(f"🔧 BACKUP_DEVICE_FIX: Moved tensor to {model_device}")
+
         # Create generation config as dictionary (InternVL3 requirement)
         generation_config = {
             'max_new_tokens': kwargs.get("max_new_tokens", self.max_new_tokens),
             'do_sample': kwargs.get("do_sample", self.do_sample),
+            'pad_token_id': self._processor.eos_token_id,  # Suppress warnings
         }
 
         # Add temperature and top_p only if do_sample is True
@@ -477,7 +485,9 @@ class VisionLanguageModel(BaseChatModel):
             tokenizer=self._processor,  # InternVL3 uses tokenizer
             pixel_values=pixel_values,
             question=question,
-            generation_config=generation_config
+            generation_config=generation_config,
+            history=None,
+            return_history=False
         )
 
         return response.strip()
