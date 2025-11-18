@@ -38,3 +38,6 @@ output/
 # OS
 .DS_Store
 Thumbs.db
+
+docs/SERIALIZATION_FIX_SUMMARY.md
+docs/CLAUDE.md
