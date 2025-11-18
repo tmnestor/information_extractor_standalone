@@ -17,7 +17,7 @@ dependencies:
   - pip
   - pip:
       # Transformers (pinned for PyTorch 2.5.1 compatibility, supports Llama-3.2-Vision and InternVL3 with Qwen3)
-      - transformers==4.47.1
+      - transformers==4.51.3
 
       # Model optimization
       - accelerate
