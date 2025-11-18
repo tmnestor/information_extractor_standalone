@@ -399,6 +399,18 @@ class VisionLanguageModel(BaseChatModel):
             processed_images.append(thumbnail_img)
         return processed_images
 
+    def _get_model_device(self):
+        """Get the primary device where the model is located."""
+        import torch
+
+        # For multi-GPU models, get the device of the first parameter
+        try:
+            # Get device from first model parameter
+            return next(self._model.parameters()).device
+        except Exception:
+            # Fallback to cuda:0
+            return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
     def _load_internvl_image(self, image: Image.Image, input_size: int = 448, max_num: int = 12):
         """Complete InternVL3 image loading and preprocessing pipeline."""
         import torch
@@ -424,8 +436,9 @@ class VisionLanguageModel(BaseChatModel):
         except Exception:
             pixel_values = pixel_values.to(dtype=torch.bfloat16)
 
-        # Move to model device
-        pixel_values = pixel_values.to(self._model.device)
+        # Move to correct device (handles multi-GPU)
+        model_device = self._get_model_device()
+        pixel_values = pixel_values.to(model_device)
 
         return pixel_values
 
