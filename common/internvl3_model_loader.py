@@ -13,7 +13,7 @@ import torch
 from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
-from transformers import AutoModelForImageTextToText, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModel, AutoTokenizer, BitsAndBytesConfig
 
 from .extraction_cleaner import sanitize_for_rich
 
@@ -394,8 +394,8 @@ def load_internvl3_model(
         elif verbose:
             rprint("[yellow]⚠️ Flash Attention disabled (V100 compatible)[/yellow]")
 
-        # Load model (using AutoModelForImageTextToText for vision-language models)
-        model = AutoModelForImageTextToText.from_pretrained(model_path, **model_kwargs).eval()
+        # Load model
+        model = AutoModel.from_pretrained(model_path, **model_kwargs).eval()
 
         # For non-quantized models, use .cuda() to place on single GPU (official pattern)
         # For quantized models, device_map handles placement
