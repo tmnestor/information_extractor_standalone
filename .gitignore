@@ -22,9 +22,9 @@ models/
 *.pth
 
 # Data (user-specific)
-evaluation_data/*.csv
-evaluation_data/images/*.png
-!evaluation_data/images/sample_*.png
+# evaluation_data/*.csv
+# evaluation_data/images/*.png
+# !evaluation_data/images/sample_*.png
 
 # Output
 output/
