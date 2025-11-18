@@ -25,7 +25,7 @@ import argparse
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from rich.console import Console
 from rich.panel import Panel
@@ -33,7 +33,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from common.config import get_yaml_config
-from common.langchain_llm import LlamaVisionLLM
+from common.langchain_llm import VisionLanguageModel
 from common.prompt_registry import get_registry
 
 console = Console()
@@ -190,9 +190,10 @@ def process_document(image_path: Path, model_name: str, model, processor):
     ))
 
     # Create LangChain LLM wrapper
-    llm = LlamaVisionLLM(
+    llm = VisionLanguageModel(
         model=model,
         processor=processor,
+        model_id=model_name,
         max_new_tokens=2000,
         temperature=0.0,
     )
