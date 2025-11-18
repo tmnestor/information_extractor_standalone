@@ -1207,21 +1207,33 @@ class YAMLConfigLoader:
         # Resolve model path from model_paths if needed
         if "model_id" in config_dict and not config_dict["model_id"].startswith("/"):
             # It's a model name, not a path - resolve it
-            model_type = "llama" if "llama" in model_name.lower() else "internvl3"
-            config_dict["model_id"] = self._resolve_model_path(model_type)
+            # Try specific model name first, then fall back to generic type
+            config_dict["model_id"] = self._resolve_model_path(model_name)
 
         return ModelConfig.from_dict(config_dict)
 
-    def _resolve_model_path(self, model_type: str) -> str:
-        """Resolve model path from YAML configuration."""
+    def _resolve_model_path(self, model_name: str) -> str:
+        """Resolve model path from YAML configuration.
+
+        Tries to resolve in this order:
+        1. Specific model name (e.g., 'internvl3-2b')
+        2. Generic model type (e.g., 'internvl3' or 'llama')
+        3. Fallback to hardcoded paths
+        """
         model_paths = self._models_config.get("model_paths", {})
         env = self._models_config.get("active_environment", "production")
 
+        # Try specific model name first (e.g., 'internvl3-2b')
+        if model_name in model_paths and env in model_paths[model_name]:
+            return model_paths[model_name][env]
+
+        # Fall back to generic type (e.g., 'llama' or 'internvl3')
+        model_type = "llama" if "llama" in model_name.lower() else "internvl3"
         if model_type in model_paths and env in model_paths[model_type]:
             return model_paths[model_type][env]
 
         # Fallback to existing config paths
-        if model_type == "llama":
+        if "llama" in model_name.lower():
             return LLAMA_MODEL_PATH
         else:
             return INTERNVL3_MODEL_PATH

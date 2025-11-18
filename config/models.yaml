@@ -89,19 +89,35 @@ default_model: "llama-3.2-11b-vision"
 # UPDATE THESE PATHS for your environment
 # Download models from:
 #   - Llama: https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct
-#   - InternVL3: https://huggingface.co/OpenGVLab/InternVL3-8B or InternVL3-2B
+#   - InternVL3: https://huggingface.co/OpenGVLab/InternVL3-2B or InternVL3-8B
 model_paths:
+  # Llama models
   llama:
-    # Set this to your local model path
     production: "/home/jovyan/nfs_share/models/Llama-3.2-11B-Vision-Instruct"
-    # Example paths (uncomment and modify as needed):
     # development: "/nfs_share/models/Llama-3.2-11B-Vision-Instruct"
     # efs: "/efs/shared/PTM/Llama-3.2-11B-Vision-Instruct"
     # local: "~/models/Llama-3.2-11B-Vision-Instruct"
 
-  internvl3:
+  # InternVL3 models - specific paths for each variant
+  internvl3-2b:
+    production: "/home/jovyan/nfs_share/models/InternVL3-2B"
+    # development: "/nfs_share/models/InternVL3-2B"
+
+  internvl3-8b:
     production: "/home/jovyan/nfs_share/models/InternVL3-8B"
     # development: "/nfs_share/models/InternVL3-8B"
+
+  internvl3-8b-quantized:
+    production: "/home/jovyan/nfs_share/models/InternVL3-8B"
+    # Uses same 8B model but with quantization enabled
+
+  internvl3_5-8b:
+    production: "/home/jovyan/nfs_share/models/InternVL3_5-8B"
+    # development: "/nfs_share/models/InternVL3_5-8B"
+
+  # Generic fallback (if specific model path not found)
+  internvl3:
+    production: "/home/jovyan/nfs_share/models/InternVL3-8B"
 
 # Active deployment environment
 active_environment: "production"
