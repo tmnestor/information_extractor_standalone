@@ -16,8 +16,8 @@ dependencies:
   # Vision & NLP Models
   - pip
   - pip:
-      # Transformers (pinned for Llama-3.2-Vision compatibility)
-      - transformers==4.45.2
+      # Transformers (supports both Llama-3.2-Vision and InternVL3 with Qwen3)
+      - transformers>=4.46.0
 
       # Model optimization
       - accelerate
