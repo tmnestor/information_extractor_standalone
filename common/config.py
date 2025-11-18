@@ -1272,6 +1272,19 @@ class YAMLConfigLoader:
         """Get extraction rules."""
         return self._prompts_config.get("extraction_rules", "")
 
+    @property
+    def config(self) -> Dict[str, Any]:
+        """
+        Get the prompts configuration dictionary.
+
+        This property provides backward compatibility for code that accesses
+        _yaml_config.config directly.
+
+        Returns:
+            Dictionary containing all prompt configurations
+        """
+        return self._prompts_config
+
 
 # Create global singleton instance
 _yaml_config = None
