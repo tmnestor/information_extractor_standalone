@@ -328,6 +328,107 @@ class VisionLanguageModel(BaseChatModel):
 
         return generated_text.strip()
 
+    def _build_internvl_transform(self, input_size: int = 448):
+        """Build InternVL3 image transformation pipeline."""
+        import torchvision.transforms as T
+
+        IMAGENET_MEAN = (0.485, 0.456, 0.406)
+        IMAGENET_STD = (0.229, 0.224, 0.225)
+
+        transform = T.Compose([
+            T.Lambda(lambda img: img.convert("RGB") if img.mode != "RGB" else img),
+            T.Resize((input_size, input_size), interpolation=T.InterpolationMode.BICUBIC),
+            T.ToTensor(),
+            T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+        ])
+        return transform
+
+    def _find_closest_aspect_ratio(self, aspect_ratio, target_ratios, width, height, image_size):
+        """Standard InternVL3 find_closest_aspect_ratio."""
+        best_ratio_diff = float('inf')
+        best_ratio = (1, 1)
+        area = width * height
+        for ratio in target_ratios:
+            target_aspect_ratio = ratio[0] / ratio[1]
+            ratio_diff = abs(aspect_ratio - target_aspect_ratio)
+            if ratio_diff < best_ratio_diff:
+                best_ratio_diff = ratio_diff
+                best_ratio = ratio
+            elif ratio_diff == best_ratio_diff:
+                if area > 0.5 * image_size * image_size * ratio[0] * ratio[1]:
+                    best_ratio = ratio
+        return best_ratio
+
+    def _dynamic_preprocess(self, image: Image.Image, min_num: int = 1, max_num: int = 12,
+                           image_size: int = 448, use_thumbnail: bool = False):
+        """Standard InternVL3 dynamic_preprocess."""
+        orig_width, orig_height = image.size
+        aspect_ratio = orig_width / orig_height
+
+        target_ratios = set(
+            (i, j) for n in range(min_num, max_num + 1)
+            for i in range(1, n + 1)
+            for j in range(1, n + 1)
+            if i * j <= max_num and i * j >= min_num
+        )
+        target_ratios = sorted(target_ratios, key=lambda x: x[0] * x[1])
+
+        target_aspect_ratio = self._find_closest_aspect_ratio(
+            aspect_ratio, target_ratios, orig_width, orig_height, image_size
+        )
+
+        target_width = image_size * target_aspect_ratio[0]
+        target_height = image_size * target_aspect_ratio[1]
+        blocks = target_aspect_ratio[0] * target_aspect_ratio[1]
+
+        resized_img = image.resize((target_width, target_height))
+        processed_images = []
+
+        for i in range(blocks):
+            box = (
+                (i % (target_width // image_size)) * image_size,
+                (i // (target_width // image_size)) * image_size,
+                ((i % (target_width // image_size)) + 1) * image_size,
+                ((i // (target_width // image_size)) + 1) * image_size
+            )
+            split_img = resized_img.crop(box)
+            processed_images.append(split_img)
+
+        if use_thumbnail and len(processed_images) != 1:
+            thumbnail_img = image.resize((image_size, image_size))
+            processed_images.append(thumbnail_img)
+        return processed_images
+
+    def _load_internvl_image(self, image: Image.Image, input_size: int = 448, max_num: int = 12):
+        """Complete InternVL3 image loading and preprocessing pipeline."""
+        import torch
+
+        # Convert to RGB if needed
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        # Process into tiles
+        images = self._dynamic_preprocess(
+            image, min_num=1, max_num=max_num, image_size=input_size, use_thumbnail=True
+        )
+
+        # Apply transforms
+        transform = self._build_internvl_transform(input_size=input_size)
+        pixel_values = [transform(img) for img in images]
+        pixel_values = torch.stack(pixel_values)
+
+        # Match model dtype
+        try:
+            model_dtype = next(self._model.parameters()).dtype
+            pixel_values = pixel_values.to(dtype=model_dtype)
+        except Exception:
+            pixel_values = pixel_values.to(dtype=torch.bfloat16)
+
+        # Move to model device
+        pixel_values = pixel_values.to(self._model.device)
+
+        return pixel_values
+
     def _generate_internvl(self, prompt: str, image: Image.Image, **kwargs: Any) -> str:
         """
         Generate text using InternVL3 with .chat() method.
@@ -340,13 +441,10 @@ class VisionLanguageModel(BaseChatModel):
         Returns:
             str: Generated text
         """
-        import torch
         from transformers import GenerationConfig
 
-        # Prepare image for InternVL3 (load and prepare pixel_values)
-        pixel_values = self._model.load_image(image, max_num=12).to(
-            torch.bfloat16
-        ).cuda()
+        # Prepare image for InternVL3
+        pixel_values = self._load_internvl_image(image, max_num=12)
 
         # Create generation config
         generation_config = GenerationConfig(
@@ -360,11 +458,14 @@ class VisionLanguageModel(BaseChatModel):
             if self.top_p is not None:
                 generation_config.top_p = kwargs.get("top_p", self.top_p)
 
+        # InternVL3 requires <image> token in the question
+        question = f"<image>\n{prompt}"
+
         # Use InternVL3's chat method
         response = self._model.chat(
             tokenizer=self._processor,  # InternVL3 uses tokenizer
             pixel_values=pixel_values,
-            question=prompt,
+            question=question,
             generation_config=generation_config
         )
 
