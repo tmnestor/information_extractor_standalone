@@ -80,7 +80,7 @@ default_model: "llama-3.2-11b-vision-8bit"
 model_paths:
   llama:
     # Set this to your local model path
-    production: "/path/to/Llama-3.2-11B-Vision-Instruct"  # UPDATE THIS PATH
+    production: "/home/jovyan/nfs_share/models/Llama-3.2-11B-Vision"
     # Example paths (uncomment and modify as needed):
     # development: "/nfs_share/models/Llama-3.2-11B-Vision-Instruct"
     # efs: "/efs/shared/PTM/Llama-3.2-11B-Vision-Instruct"
