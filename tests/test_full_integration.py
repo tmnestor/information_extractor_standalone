@@ -123,20 +123,21 @@ def extract_with_single_pass(image_path: Path, llm, model_name: str, structure_t
 
     console.print(f"[yellow]Using prompt optimized for: {structure_type}[/yellow]")
 
-    # Format prompt with image
-    from PIL import Image
+    # Get prompt text
+    messages = prompt.format_messages(image="<image>")
+    prompt_text = "\n".join(msg.content for msg in messages if msg.content)
 
-    image = Image.open(image_path)
-    messages = prompt.format_messages(image=image)
-
-    # Invoke model
+    # Invoke model with image
     with console.status("[bold green]Extracting data..."):
-        response = llm.invoke(messages)
+        response = llm.invoke_with_image(
+            prompt=prompt_text,
+            image_path=str(image_path)
+        )
 
     console.print("\n[bold green]Extraction Result:[/bold green]")
-    console.print(Panel(response.content, title="Extracted Data", border_style="green"))
+    console.print(Panel(response, title="Extracted Data", border_style="green"))
 
-    return response.content
+    return response
 
 
 def extract_with_multiturn(image_path: Path, llm):
@@ -234,16 +235,20 @@ def process_document(image_path: Path, model_name: str, model, processor):
             model_name=model_name,
         )
 
-        from PIL import Image
-
-        image = Image.open(image_path)
-        messages = prompt.format_messages(image=image)
+        # Get prompt text (ChatPromptTemplate returns list with SystemMessage, HumanMessage)
+        # We just need the text content
+        messages = prompt.format_messages(image="<image>")
+        prompt_text = "\n".join(msg.content for msg in messages if msg.content)
 
         with console.status("[bold green]Extracting data..."):
-            response = llm.invoke(messages)
+            # Use convenience method that handles image formatting
+            response = llm.invoke_with_image(
+                prompt=prompt_text,
+                image_path=str(image_path)
+            )
 
         console.print("\n[bold green]Extraction Result:[/bold green]")
-        console.print(Panel(response.content, title="Extracted Data", border_style="green"))
+        console.print(Panel(response, title="Extracted Data", border_style="green"))
 
 
 def main():
