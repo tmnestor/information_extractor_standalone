@@ -213,7 +213,7 @@ def process_document(image_path: Path, model_name: str, model, processor):
         processor=processor,
         model_id=model_name,
         max_new_tokens=2000,
-        temperature=0.0,
+        do_sample=False,  # Greedy decoding (deterministic)
     )
 
     # Phase 1: Get model-specific prompt info
