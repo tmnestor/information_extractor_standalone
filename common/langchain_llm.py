@@ -307,15 +307,21 @@ class VisionLanguageModel(BaseChatModel):
             padding=True,
         ).to(self._model.device)
 
-        # Generate
+        # Generate with appropriate parameters
+        do_sample = kwargs.get("do_sample", self.do_sample)
+        gen_kwargs = {
+            "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
+            "do_sample": do_sample,
+        }
+
+        # Only add temperature and top_p when sampling
+        if do_sample:
+            gen_kwargs["temperature"] = kwargs.get("temperature", self.temperature)
+            if self.top_p is not None:
+                gen_kwargs["top_p"] = kwargs.get("top_p", self.top_p)
+
         with torch.no_grad():
-            output = self._model.generate(
-                **inputs,
-                max_new_tokens=kwargs.get("max_new_tokens", self.max_new_tokens),
-                do_sample=kwargs.get("do_sample", self.do_sample),
-                temperature=kwargs.get("temperature", self.temperature),
-                top_p=kwargs.get("top_p", self.top_p),
-            )
+            output = self._model.generate(**inputs, **gen_kwargs)
 
         # Decode only the new tokens
         generated_text = self._processor.decode(
