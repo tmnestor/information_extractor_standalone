@@ -123,9 +123,22 @@ def extract_with_single_pass(image_path: Path, llm, model_name: str, structure_t
 
     console.print(f"[yellow]Using prompt optimized for: {structure_type}[/yellow]")
 
-    # Get prompt text
+    # Get prompt text (handle both string and list content)
     messages = prompt.format_messages(image="<image>")
-    prompt_text = "\n".join(msg.content for msg in messages if msg.content)
+
+    text_parts = []
+    for msg in messages:
+        if isinstance(msg.content, str):
+            text_parts.append(msg.content)
+        elif isinstance(msg.content, list):
+            # Extract text from multi-modal content
+            for item in msg.content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text_parts.append(item["text"])
+                elif isinstance(item, str):
+                    text_parts.append(item)
+
+    prompt_text = "\n\n".join(text_parts)
 
     # Invoke model with image
     with console.status("[bold green]Extracting data..."):
@@ -238,7 +251,21 @@ def process_document(image_path: Path, model_name: str, model, processor):
         # Get prompt text (ChatPromptTemplate returns list with SystemMessage, HumanMessage)
         # We just need the text content
         messages = prompt.format_messages(image="<image>")
-        prompt_text = "\n".join(msg.content for msg in messages if msg.content)
+
+        # Extract text from messages (content can be string or list)
+        text_parts = []
+        for msg in messages:
+            if isinstance(msg.content, str):
+                text_parts.append(msg.content)
+            elif isinstance(msg.content, list):
+                # Extract text from multi-modal content
+                for item in msg.content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(item["text"])
+                    elif isinstance(item, str):
+                        text_parts.append(item)
+
+        prompt_text = "\n\n".join(text_parts)
 
         with console.status("[bold green]Extracting data..."):
             # Use convenience method that handles image formatting
