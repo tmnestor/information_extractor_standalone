@@ -372,11 +372,17 @@ def load_internvl3_model(
         # https://internvl.readthedocs.io/en/latest/internvl3.0/quick_start.html
         model_kwargs = {
             "torch_dtype": torch_dtype_obj,
-            "quantization_config": quantization_config,  # BitsAndBytesConfig (replaces deprecated load_in_8bit)
             "low_cpu_mem_usage": low_cpu_mem_usage,
             "trust_remote_code": True,
-            "device_map": device_map,
         }
+
+        # Add quantization config if enabled
+        if quantization_config is not None:
+            model_kwargs["quantization_config"] = quantization_config
+            # Quantized models need device_map for proper placement
+            model_kwargs["device_map"] = device_map
+            if verbose:
+                rprint("[yellow]Using device_map='auto' for quantized model distribution[/yellow]")
 
         # Add Flash Attention only if requested (not supported on V100)
         if use_flash_attn:
@@ -388,7 +394,15 @@ def load_internvl3_model(
         elif verbose:
             rprint("[yellow]⚠️ Flash Attention disabled (V100 compatible)[/yellow]")
 
+        # Load model
         model = AutoModel.from_pretrained(model_path, **model_kwargs).eval()
+
+        # For non-quantized models, use .cuda() to place on single GPU (official pattern)
+        # For quantized models, device_map handles placement
+        if quantization_config is None and torch.cuda.is_available():
+            model = model.cuda()
+            if verbose:
+                rprint("[green]✅ Model placed on single GPU (official pattern)[/green]")
 
         # Load tokenizer
         if verbose:
