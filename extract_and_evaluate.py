@@ -707,13 +707,15 @@ Examples:
 
             # Evaluate if enabled
             if args.evaluate:
-                if result["image_name"] not in ground_truth:
-                    console.print(f"[yellow]Warning: No ground truth for {result['image_name']}[/yellow]")
+                # Use stem (without extension) for robust ground truth lookup
+                image_stem = Path(result["image_name"]).stem
+                if image_stem not in ground_truth:
+                    console.print(f"[yellow]Warning: No ground truth for {result['image_name']} (stem: {image_stem})[/yellow]")
                 else:
                     eval_result = display_detailed_evaluation(
                         result["image_name"],
                         result["extracted"],
-                        ground_truth[result["image_name"]],
+                        ground_truth[image_stem],
                         result["document_type"],
                         args.show_mismatches_only,
                     )
@@ -737,13 +739,15 @@ Examples:
 
                 # Evaluate if enabled
                 if args.evaluate:
-                    if result["image_name"] not in ground_truth:
-                        console.print(f"[yellow]Warning: No ground truth for {result['image_name']}[/yellow]")
+                    # Use stem (without extension) for robust ground truth lookup
+                    image_stem = Path(result["image_name"]).stem
+                    if image_stem not in ground_truth:
+                        console.print(f"[yellow]Warning: No ground truth for {result['image_name']} (stem: {image_stem})[/yellow]")
                     else:
                         eval_result = display_detailed_evaluation(
                             result["image_name"],
                             result["extracted"],
-                            ground_truth[result["image_name"]],
+                            ground_truth[image_stem],
                             result["document_type"],
                             args.show_mismatches_only,
                         )
