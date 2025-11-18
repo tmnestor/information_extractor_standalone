@@ -441,22 +441,20 @@ class VisionLanguageModel(BaseChatModel):
         Returns:
             str: Generated text
         """
-        from transformers import GenerationConfig
-
         # Prepare image for InternVL3
         pixel_values = self._load_internvl_image(image, max_num=12)
 
-        # Create generation config
-        generation_config = GenerationConfig(
-            max_new_tokens=kwargs.get("max_new_tokens", self.max_new_tokens),
-            do_sample=kwargs.get("do_sample", self.do_sample),
-        )
+        # Create generation config as dictionary (InternVL3 requirement)
+        generation_config = {
+            'max_new_tokens': kwargs.get("max_new_tokens", self.max_new_tokens),
+            'do_sample': kwargs.get("do_sample", self.do_sample),
+        }
 
-        # Add temperature only if do_sample is True
-        if generation_config.do_sample:
-            generation_config.temperature = kwargs.get("temperature", self.temperature)
+        # Add temperature and top_p only if do_sample is True
+        if generation_config['do_sample']:
+            generation_config['temperature'] = kwargs.get("temperature", self.temperature)
             if self.top_p is not None:
-                generation_config.top_p = kwargs.get("top_p", self.top_p)
+                generation_config['top_p'] = kwargs.get("top_p", self.top_p)
 
         # InternVL3 requires <image> token in the question
         question = f"<image>\n{prompt}"
