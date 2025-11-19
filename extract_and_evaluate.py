@@ -243,7 +243,7 @@ def classify_document_structure(image_path: Path, llm, model_name: str):
     return result
 
 
-def extract_with_single_pass(image_path: Path, llm, model_name: str, structure_type: str):
+def extract_with_single_pass(image_path: Path, llm, model_name: str, structure_type: str, variant: str = "default"):
     """Extract using single-pass method with structure-specific prompt (Phase 3)."""
     console.print("\n[bold cyan]Phase 3: Single-pass extraction with structure-specific prompt[/bold cyan]")
 
@@ -254,6 +254,7 @@ def extract_with_single_pass(image_path: Path, llm, model_name: str, structure_t
         document_type="bank_statement",
         model_name=model_name,
         structure_type=structure_type,
+        variant=variant,
     )
 
     console.print(f"[yellow]Using prompt optimized for: {structure_type}[/yellow]")
@@ -551,7 +552,7 @@ def display_batch_summary(all_results: List[Dict]) -> None:
 
 
 def process_document(
-    image_path: Path, model_name: str, model, processor, show_extraction: bool = True
+    image_path: Path, model_name: str, model, processor, show_extraction: bool = True, variant: str = "default"
 ) -> Dict:
     """
     Process a document using all 4 phases.
@@ -561,6 +562,7 @@ def process_document(
         model_name: Name of model to use
         model: Loaded model instance
         processor: Loaded processor instance
+        variant: Prompt variant to use ("default", "minimal", etc.)
         show_extraction: Whether to display extraction results
 
     Returns:
@@ -619,7 +621,7 @@ def process_document(
         else:
             # Phase 3: Single-pass with structure-specific prompt
             raw_response = extract_with_single_pass(
-                image_path, llm, model_name, structure_result.structure_type
+                image_path, llm, model_name, structure_result.structure_type, variant
             )
     else:
         # For invoices/receipts: use standard single-pass
@@ -629,6 +631,7 @@ def process_document(
         prompt = registry.get_prompt(
             document_type=document_type,
             model_name=model_name,
+            variant=variant,
         )
 
         # Get prompt text (ChatPromptTemplate returns list with SystemMessage, HumanMessage)
@@ -734,6 +737,12 @@ Examples:
         type=str,
         help="Save evaluation results to JSON file",
     )
+    parser.add_argument(
+        "--prompt-variant",
+        type=str,
+        default="",
+        help="Prompt variant to use (e.g., 'minimal' for simpler prompts). Appends to model name for prompt lookup.",
+    )
 
     args = parser.parse_args()
 
@@ -755,6 +764,11 @@ Examples:
         # Load model
         model, processor = load_model(args.model)
 
+        # Determine prompt variant (defaults to "default")
+        prompt_variant = args.prompt_variant if args.prompt_variant else "default"
+        if args.prompt_variant:
+            console.print(f"[cyan]Using prompt variant: {prompt_variant}[/cyan]")
+
         # Collect evaluation results
         all_eval_results = []
 
@@ -767,7 +781,7 @@ Examples:
                 return 1
 
             result = process_document(
-                image_path, args.model, model, processor, show_extraction=not args.evaluate
+                image_path, args.model, model, processor, show_extraction=not args.evaluate, variant=prompt_variant
             )
 
             # Evaluate if enabled
@@ -799,7 +813,7 @@ Examples:
 
             for image_path in image_files:
                 result = process_document(
-                    image_path, args.model, model, processor, show_extraction=not args.evaluate
+                    image_path, args.model, model, processor, show_extraction=not args.evaluate, variant=prompt_variant
                 )
 
                 # Evaluate if enabled

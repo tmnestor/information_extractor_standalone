@@ -73,6 +73,7 @@ class PromptRegistry:
         model_name: Optional[str] = None,
         structure_type: Optional[str] = None,
         version: Optional[str] = None,
+        variant: str = "default",
     ) -> ChatPromptTemplate:
         """
         Get prompt from registry.
@@ -82,6 +83,7 @@ class PromptRegistry:
             model_name: Model name for model-specific prompts
             structure_type: Bank statement structure (if applicable)
             version: Prompt version (defaults to latest)
+            variant: Prompt variant to use (e.g., "default", "minimal")
 
         Returns:
             ChatPromptTemplate configured for these parameters
@@ -99,6 +101,13 @@ class PromptRegistry:
             ...     model_name="llama-3.2-vision",
             ...     structure_type="TABLE_5COL_STANDARD"
             ... )
+            >>>
+            >>> # Get minimal variant
+            >>> prompt = registry.get_prompt(
+            ...     document_type="bank_statement",
+            ...     model_name="llama-3.2-vision",
+            ...     variant="minimal"
+            ... )
         """
         # Get or create prompt manager for this model
         manager = self._get_or_create_manager(model_name)
@@ -107,6 +116,7 @@ class PromptRegistry:
         prompt = manager.get_extraction_prompt(
             document_type=document_type,
             model_name=model_name,
+            variant=variant,
         )
 
         # TODO: Apply structure-specific modifications if needed

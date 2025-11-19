@@ -138,6 +138,7 @@ RULES:
         document_type: str,
         include_format_instructions: bool = True,
         model_name: Optional[str] = None,
+        variant: str = "default",
     ) -> ChatPromptTemplate:
         """
         Get extraction prompt for document type.
@@ -146,6 +147,7 @@ RULES:
             document_type: Type of document (invoice, receipt, bank_statement)
             include_format_instructions: Include output format in prompt
             model_name: Override model name for this prompt (uses instance default if None)
+            variant: Prompt variant to use ("default", "minimal", etc.)
 
         Returns:
             ChatPromptTemplate configured for this document type
@@ -157,11 +159,11 @@ RULES:
         # Use provided model_name or fall back to instance model_name
         effective_model = model_name or self.model_name
 
-        cache_key = f"{document_type}_{include_format_instructions}_{effective_model}"
+        cache_key = f"{document_type}_{include_format_instructions}_{effective_model}_{variant}"
 
         if cache_key not in self._prompt_cache:
             self._prompt_cache[cache_key] = self._build_extraction_prompt(
-                document_type, include_format_instructions, effective_model
+                document_type, include_format_instructions, effective_model, variant
             )
 
         return self._prompt_cache[cache_key]
@@ -183,6 +185,7 @@ RULES:
         document_type: str,
         include_format_instructions: bool,
         model_name: Optional[str] = None,
+        variant: str = "default",
     ) -> ChatPromptTemplate:
         """
         Build extraction prompt from field definitions.
@@ -207,8 +210,8 @@ RULES:
 
         field_format = "\n".join(field_lines)
 
-        # Get document-specific instructions (model-aware)
-        doc_instructions = self._get_document_instructions(document_type, model_name=model_name)
+        # Get document-specific instructions (model-aware, with variant support)
+        doc_instructions = self._get_document_instructions(document_type, model_name=model_name, variant=variant)
 
         # Build prompt components
         # Use configured system mode
@@ -285,7 +288,8 @@ Respond with ONLY the document type line - no explanations."""
     def _get_document_instructions(
         self,
         document_type: str,
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
+        variant: str = "default"
     ) -> str:
         """
         Get document-type-specific instructions with model adaptation.
@@ -306,10 +310,10 @@ Respond with ONLY the document type line - no explanations."""
                 )
 
                 if use_model_specific:
-                    # Try exact model match first
+                    # Try exact model match first (with variant support)
                     model_instructions = self._yaml_config.config.get(
                         'model_specific_document_instructions', {}
-                    ).get(model_name, {}).get(document_type)
+                    ).get(model_name, {}).get(variant, {}).get(document_type)
 
                     if model_instructions:
                         return model_instructions
@@ -319,7 +323,7 @@ Respond with ONLY the document type line - no explanations."""
                     if model_family and model_family != model_name:
                         family_instructions = self._yaml_config.config.get(
                             'model_specific_document_instructions', {}
-                        ).get(model_family, {}).get(document_type)
+                        ).get(model_family, {}).get(variant, {}).get(document_type)
 
                         if family_instructions:
                             return family_instructions
