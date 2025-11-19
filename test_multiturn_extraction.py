@@ -114,58 +114,25 @@ def main():
     # Create multi-turn extractor
     extractor = MultiTurnExtractorV2(llm=llm, config=config)
 
-    # Extract bank statement
+    # Extract bank statement (returns markdown table)
     console.print(f"\n[bold cyan]Processing: {image_path}[/bold cyan]")
-    result = extractor.extract_bank_statement(image_path)
+    markdown_table = extractor.extract_bank_statement(image_path)
 
-    # Display results
+    # Display the extracted markdown table
     console.print("\n" + "=" * 80)
-    console.print("[bold cyan]Extraction Results:[/bold cyan]")
+    console.print("[bold cyan]Extracted 3-Column Markdown Table:[/bold cyan]")
     console.print("=" * 80)
+    console.print()
 
-    console.print(f"\n[green]Structure Type:[/green] {result.structure.structure_type}")
-    console.print(
-        f"[green]Column Headers:[/green] {' | '.join(result.structure.column_headers)}"
-    )
-    console.print(f"[green]Total Rows:[/green] {result.row_count}")
+    # Use rich.markdown to render the table
+    from rich.markdown import Markdown
+    console.print(Markdown(markdown_table))
 
-    console.print("\n[green]Sample Transactions (first 3):[/green]")
-    for i in range(min(3, result.row_count)):
-        console.print(f"\n[cyan]Transaction {i+1}:[/cyan]")
-        console.print(f"  Date: {result.dates[i]}")
-        console.print(f"  Description: {result.descriptions[i]}")
-        console.print(f"  Debit: {result.debits[i]}")
-        console.print(f"  Credit: {result.credits[i]}")
-        console.print(f"  Balance: {result.balances[i]}")
-
-    # Show validation status
+    # Also show raw markdown for inspection
     console.print("\n" + "=" * 80)
-    console.print("[bold cyan]Validation:[/bold cyan]")
+    console.print("[bold cyan]Raw Markdown (for copying/validation):[/bold cyan]")
     console.print("=" * 80)
-
-    if result.validation_passed:
-        console.print("[green]✅ All validations passed[/green]")
-    else:
-        console.print(
-            f"[yellow]⚠️  {len(result.validation_errors)} validation warnings:[/yellow]"
-        )
-        for error in result.validation_errors:
-            console.print(f"  • {error}")
-
-    # Show compatible output format
-    console.print("\n" + "=" * 80)
-    console.print("[bold cyan]Compatible Output (Evaluation Format):[/bold cyan]")
-    console.print("=" * 80)
-
-    output = result.to_dict()
-    console.print("\n[green]TRANSACTION_DATES:[/green]")
-    console.print(f"  {output['TRANSACTION_DATES'][:200]}...")
-
-    console.print("\n[green]LINE_ITEM_DESCRIPTIONS:[/green]")
-    console.print(f"  {output['LINE_ITEM_DESCRIPTIONS'][:200]}...")
-
-    console.print("\n[green]TRANSACTION_AMOUNTS_PAID:[/green]")
-    console.print(f"  {output['TRANSACTION_AMOUNTS_PAID'][:200]}...")
+    console.print(markdown_table)
 
     return 0
 

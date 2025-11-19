@@ -152,9 +152,105 @@ class VisionLanguageModel(BaseChatModel):
             "top_p": self.top_p,
         }
 
+    def _build_conversation_history(
+        self, messages: List[BaseMessage]
+    ) -> tuple[Any, Optional[Image.Image]]:
+        """
+        Build model-specific conversation history from LangChain messages.
+
+        For Llama: Returns list of message dicts with roles
+        For InternVL3: Returns (question, history_list, image) tuple
+
+        Args:
+            messages: List of LangChain messages (SystemMessage, HumanMessage, AIMessage)
+
+        Returns:
+            For Llama: (messages_list, image)
+            For InternVL3: (current_question, history_list, image)
+
+        Raises:
+            ValueError: If no image is found in messages
+        """
+        image = None
+
+        if self._is_llama:
+            # Build Llama messages list with proper roles
+            llama_messages = []
+
+            for message in messages:
+                if isinstance(message, SystemMessage):
+                    llama_messages.append({"role": "system", "content": message.content})
+                elif isinstance(message, HumanMessage):
+                    # Extract text and image
+                    text_content = []
+
+                    if isinstance(message.content, str):
+                        text_content.append({"type": "text", "text": message.content})
+                    elif isinstance(message.content, list):
+                        for item in message.content:
+                            if isinstance(item, dict):
+                                if item.get("type") == "text":
+                                    text_content.append(item)
+                                elif item.get("type") == "image_url":
+                                    # Extract image but add <image> placeholder
+                                    image_source = item.get("image_url", {}).get("url", "")
+                                    if image_source:
+                                        image = self._load_image(image_source)
+                                    text_content.append({"type": "image"})
+                            elif isinstance(item, str):
+                                text_content.append({"type": "text", "text": item})
+
+                    llama_messages.append({"role": "user", "content": text_content})
+
+                elif isinstance(message, AIMessage):
+                    llama_messages.append({"role": "assistant", "content": message.content})
+
+            return llama_messages, image
+
+        else:
+            # Build InternVL3 history (list of Q&A tuples) and current question
+            history = []
+            current_question = None
+
+            for i, message in enumerate(messages):
+                if isinstance(message, HumanMessage):
+                    # Extract text and image
+                    question_text = ""
+
+                    if isinstance(message.content, str):
+                        question_text = message.content
+                    elif isinstance(message.content, list):
+                        text_parts = []
+                        for item in message.content:
+                            if isinstance(item, dict):
+                                if item.get("type") == "text":
+                                    text_parts.append(item["text"])
+                                elif item.get("type") == "image_url":
+                                    image_source = item.get("image_url", {}).get("url", "")
+                                    if image_source:
+                                        image = self._load_image(image_source)
+                            elif isinstance(item, str):
+                                text_parts.append(item)
+                        question_text = "\n".join(text_parts)
+
+                    # Check if this is the last message (current question)
+                    if i == len(messages) - 1:
+                        current_question = question_text
+                    else:
+                        # Look ahead for AI response
+                        if i + 1 < len(messages) and isinstance(
+                            messages[i + 1], AIMessage
+                        ):
+                            answer = messages[i + 1].content
+                            history.append((question_text, answer))
+
+            return current_question, history, image
+
     def _format_messages(self, messages: List[BaseMessage]) -> tuple[str, Optional[Image.Image]]:
         """
         Format LangChain messages into prompt text and image.
+
+        DEPRECATED: Use _build_conversation_history for multi-turn support.
 
         Args:
             messages: List of LangChain messages (SystemMessage, HumanMessage, AIMessage)
@@ -246,21 +342,29 @@ class VisionLanguageModel(BaseChatModel):
         Raises:
             ValueError: If no image is found in messages
         """
-        # Format messages into prompt and extract image
-        prompt, image = self._format_messages(messages)
+        # Build conversation history (model-specific format)
+        conv_data = self._build_conversation_history(messages)
 
-        if image is None:
-            raise ValueError(
-                "No image found in messages. Vision-language models require an image.\n"
-                "Add image using: HumanMessage(content=[{'type': 'image_url', "
-                "'image_url': {'url': '/path/to/image.png'}}, {'type': 'text', 'text': 'prompt'}])"
-            )
-
-        # Generate based on model type
         if self._is_llama:
-            generated_text = self._generate_llama(prompt, image, **kwargs)
+            llama_messages, image = conv_data
+            if image is None:
+                raise ValueError(
+                    "No image found in messages. Vision-language models require an image.\n"
+                    "Add image using: HumanMessage(content=[{'type': 'image_url', "
+                    "'image_url': {'url': '/path/to/image.png'}}, {'type': 'text', 'text': 'prompt'}])"
+                )
+            generated_text = self._generate_llama(llama_messages, image, **kwargs)
         else:
-            generated_text = self._generate_internvl(prompt, image, **kwargs)
+            current_question, history, image = conv_data
+            if image is None:
+                raise ValueError(
+                    "No image found in messages. Vision-language models require an image.\n"
+                    "Add image using: HumanMessage(content=[{'type': 'image_url', "
+                    "'image_url': {'url': '/path/to/image.png'}}, {'type': 'text', 'text': 'prompt'}])"
+                )
+            generated_text = self._generate_internvl(
+                current_question, image, history=history, **kwargs
+            )
 
         # Update metrics
         self._api_calls += 1
@@ -271,30 +375,22 @@ class VisionLanguageModel(BaseChatModel):
 
         return ChatResult(generations=[generation])
 
-    def _generate_llama(self, prompt: str, image: Image.Image, **kwargs: Any) -> str:
+    def _generate_llama(
+        self, messages: List[dict], image: Image.Image, **kwargs: Any
+    ) -> str:
         """
         Generate text using Llama-3.2-Vision with chat template.
 
         Args:
-            prompt: Text prompt
+            messages: List of message dicts with roles (system/user/assistant)
+                     Built by _build_conversation_history()
             image: PIL Image
             **kwargs: Additional generation parameters
 
         Returns:
             str: Generated text
         """
-        # Prepare multimodal input with chat template
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image"},
-                    {"type": "text", "text": prompt}
-                ]
-            }
-        ]
-
-        # Apply chat template
+        # Apply chat template to conversation history
         input_text = self._processor.apply_chat_template(
             messages, add_generation_prompt=True
         )
@@ -457,13 +553,20 @@ class VisionLanguageModel(BaseChatModel):
 
         return pixel_values
 
-    def _generate_internvl(self, prompt: str, image: Image.Image, **kwargs: Any) -> str:
+    def _generate_internvl(
+        self,
+        question: str,
+        image: Image.Image,
+        history: Optional[List[tuple]] = None,
+        **kwargs: Any,
+    ) -> str:
         """
         Generate text using InternVL3 with .chat() method.
 
         Args:
-            prompt: Text prompt
+            question: Current question/prompt
             image: PIL Image
+            history: List of (question, answer) tuples for conversation history
             **kwargs: Additional generation parameters
 
         Returns:
@@ -474,28 +577,30 @@ class VisionLanguageModel(BaseChatModel):
 
         # Create generation config as dictionary (InternVL3 requirement)
         generation_config = {
-            'max_new_tokens': kwargs.get("max_new_tokens", self.max_new_tokens),
-            'do_sample': kwargs.get("do_sample", self.do_sample),
-            'pad_token_id': self._processor.eos_token_id,  # Suppress warnings
+            "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
+            "do_sample": kwargs.get("do_sample", self.do_sample),
+            "pad_token_id": self._processor.eos_token_id,  # Suppress warnings
         }
 
         # Add temperature and top_p only if do_sample is True
-        if generation_config['do_sample']:
-            generation_config['temperature'] = kwargs.get("temperature", self.temperature)
+        if generation_config["do_sample"]:
+            generation_config["temperature"] = kwargs.get(
+                "temperature", self.temperature
+            )
             if self.top_p is not None:
-                generation_config['top_p'] = kwargs.get("top_p", self.top_p)
+                generation_config["top_p"] = kwargs.get("top_p", self.top_p)
 
         # InternVL3 requires <image> token in the question
-        question = f"<image>\n{prompt}"
+        question_with_image = f"<image>\n{question}"
 
-        # Use InternVL3's chat method
+        # Use InternVL3's chat method with conversation history
         response = self._model.chat(
             tokenizer=self._processor,  # InternVL3 uses tokenizer
             pixel_values=pixel_values,
-            question=question,
+            question=question_with_image,
             generation_config=generation_config,
-            history=None,
-            return_history=False
+            history=history if history else None,  # Pass conversation history!
+            return_history=False,
         )
 
         return response.strip()

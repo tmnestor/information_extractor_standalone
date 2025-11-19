@@ -87,23 +87,22 @@ class MultiTurnResult:
 
 class MultiTurnExtractorV2:
     """
-    Multi-turn bank statement extractor using structure detection.
+    Multi-turn bank statement extractor using 3-turn approach.
 
-    Architecture:
-        Turn 0: Detect table structure and extract column headers
-        Turn 1: Extract date column using actual header name
-        Turn 2: Extract description column using actual header name
-        Turn 3: Extract debit column using actual header name
-        Turn 4: Extract credit column using actual header name
-        Turn 5: Extract balance column (for validation)
+    Architecture (NEW):
+        Turn 0: Extract FULL markdown table + detect structure (single OCR)
+        Turn 1: Filter to 3 columns (date, description, debit) - keep ALL rows
+        Turn 2: Remove empty debit rows (withdrawals only)
+
+    This approach avoids debit/credit confusion by:
+        1. Extracting the complete table only once (no re-interpretation)
+        2. Using text filtering for column selection
+        3. Using empty-value filtering for row selection
 
     Example:
         >>> extractor = MultiTurnExtractorV2(llm=vision_llm, config=yaml_config)
-        >>> result = extractor.extract_bank_statement("complex_statement.png")
-        >>>
-        >>> if result.validation_passed:
-        ...     print(f"✅ Extracted {result.row_count} transactions")
-        ...     output = result.to_dict()
+        >>> markdown_table = extractor.extract_bank_statement("statement.png")
+        >>> print(markdown_table)  # 3-column markdown (withdrawals only)
     """
 
     def __init__(self, llm: Any, config: Any):
@@ -119,22 +118,71 @@ class MultiTurnExtractorV2:
 
     def extract_bank_statement(
         self, image_path: str | Path
-    ) -> MultiTurnResult:
+    ) -> str:
         """
-        Extract bank statement using multi-turn approach.
+        Extract bank statement using 3-turn approach.
+
+        Turn 0: Extract FULL markdown table + detect structure
+        Turn 1: Filter to 3 columns (date, description, debit) - keep ALL rows
+        Turn 2: Remove empty debit rows (withdrawals only)
 
         Args:
             image_path: Path to bank statement image
 
         Returns:
-            MultiTurnResult with all extracted columns
+            Markdown table string with 3 columns (withdrawals only)
 
         Example:
-            >>> result = extractor.extract_bank_statement("statement.png")
-            >>> print(f"Structure: {result.structure.structure_type}")
-            >>> print(f"Columns: {result.structure.column_headers}")
-            >>> print(f"Rows: {result.row_count}")
+            >>> markdown_table = extractor.extract_bank_statement("statement.png")
+            >>> print(markdown_table)
         """
+        image_path = Path(image_path)
+
+        console.print(f"\n[bold cyan]Multi-Turn Extraction (3-Turn):[/bold cyan] {image_path.name}")
+
+        # Turn 0: Extract FULL markdown table + detect structure
+        console.print("[cyan]Turn 0:[/cyan] Extracting full markdown table + detecting structure...")
+        structure, turn0_response = self._detect_structure(image_path)
+
+        console.print(f"  Structure: [green]{structure.structure_type}[/green]")
+        console.print(f"  Columns: [green]{' | '.join(structure.column_headers)}[/green]")
+        console.print(f"  Estimated rows: [green]{structure.estimated_rows}[/green]")
+
+        # Map column headers to semantic types
+        structure = self._map_column_headers(structure)
+
+        # Debug: Show mappings
+        console.print("  [yellow]Mappings:[/yellow]")
+        console.print(f"    Date → {structure.date_column}")
+        console.print(f"    Description → {structure.description_column}")
+        console.print(f"    Debit → {structure.debit_column}")
+
+        # Turn 1: Filter to 3 columns (keep ALL rows)
+        console.print("\n[cyan]Turn 1:[/cyan] Filtering to 3 columns (all rows)...")
+        console.print(f"  Columns: [green]{structure.date_column} | {structure.description_column} | {structure.debit_column}[/green]")
+        console.print("  [dim]Using Turn 0 response for conversation context...[/dim]")
+
+        turn1_table = self._turn1_extract_3columns(
+            image_path, structure, turn0_response
+        )
+
+        # Turn 2: Remove empty debit rows (withdrawals only)
+        console.print("\n[cyan]Turn 2:[/cyan] Filtering to withdrawals only...")
+        console.print(f"  Removing rows where '{structure.debit_column}' is empty...")
+        console.print("  [dim]Using Turn 0 and Turn 1 responses for conversation context...[/dim]")
+
+        markdown_table = self._turn2_filter_debits(
+            image_path, structure, turn0_response, turn1_table
+        )
+
+        console.print("\n[bold green]✅ Extraction complete (3 turns)[/bold green]")
+
+        return markdown_table
+
+    def extract_bank_statement_OLD(
+        self, image_path: str | Path
+    ) -> MultiTurnResult:
+        """OLD MULTI-COLUMN VERSION - DEPRECATED"""
         image_path = Path(image_path)
 
         console.print(f"\n[bold cyan]Multi-Turn Extraction:[/bold cyan] {image_path.name}")
@@ -149,6 +197,14 @@ class MultiTurnExtractorV2:
 
         # Map column headers to semantic types
         structure = self._map_column_headers(structure)
+
+        # Debug: Show mappings
+        console.print("  [yellow]Mappings:[/yellow]")
+        console.print(f"    Date → {structure.date_column}")
+        console.print(f"    Description → {structure.description_column}")
+        console.print(f"    Debit → {structure.debit_column}")
+        console.print(f"    Credit → {structure.credit_column}")
+        console.print(f"    Balance → {structure.balance_column}")
 
         # Turn 1: Extract dates
         console.print(f"\n[cyan]Turn 1:[/cyan] Extracting '{structure.date_column}' column...")
@@ -224,7 +280,7 @@ class MultiTurnExtractorV2:
 
         return result
 
-    def _detect_structure(self, image_path: Path) -> TableStructure:
+    def _detect_structure(self, image_path: Path) -> tuple[TableStructure, str]:
         """
         Detect table structure and extract column headers.
 
@@ -232,7 +288,7 @@ class MultiTurnExtractorV2:
             image_path: Path to bank statement image
 
         Returns:
-            TableStructure with detected information
+            tuple: (TableStructure, raw_response_text)
         """
         # Load structure detection prompt
         prompt_template = self.config.get_prompt_template("structure_detection_template")
@@ -254,7 +310,8 @@ class MultiTurnExtractorV2:
         # Parse response
         structure = self._parse_structure_response(response.content)
 
-        return structure
+        # Return both structure and raw response for conversation history
+        return structure, response.content
 
     def _parse_structure_response(self, response_text: str) -> TableStructure:
         """
@@ -414,6 +471,159 @@ class MultiTurnExtractorV2:
         values = self._parse_column_response(response.content)
 
         return values
+
+    def _turn1_extract_3columns(
+        self, image_path: Path, structure: TableStructure, turn0_response: str
+    ) -> str:
+        """
+        Turn 1: Filter full markdown table to 3 columns (keep all rows).
+
+        Args:
+            image_path: Path to image
+            structure: Table structure with column mappings
+            turn0_response: Raw response from Turn 0 (structure detection)
+
+        Returns:
+            Markdown table string with 3 columns (all rows)
+        """
+        # Load Turn 1 template (filter to 3 columns)
+        prompt_template = self.config.get_prompt_template(
+            "turn1_3column_template"
+        )
+
+        # Format with actual column names
+        turn1_prompt = prompt_template.format(
+            date_column=structure.date_column,
+            description_column=structure.description_column,
+            debit_column=structure.debit_column,
+        )
+
+        # Build conversation history with Turn 0
+        from langchain_core.messages import AIMessage, HumanMessage
+
+        # Get Turn 0 prompt for conversation history
+        turn0_prompt = self.config.get_prompt_template("structure_detection_template")
+
+        messages = [
+            # Turn 0: Structure detection
+            HumanMessage(
+                content=[
+                    {"type": "image_url", "image_url": {"url": str(image_path)}},
+                    {"type": "text", "text": turn0_prompt},
+                ]
+            ),
+            AIMessage(content=turn0_response),
+            # Turn 1: 3-column extraction
+            HumanMessage(
+                content=[
+                    {"type": "image_url", "image_url": {"url": str(image_path)}},
+                    {"type": "text", "text": turn1_prompt},
+                ]
+            ),
+        ]
+
+        # Get response with conversation context
+        response = self.llm.invoke(messages)
+
+        # Clean up markdown formatting if present
+        markdown_table = response.content.strip()
+
+        # Remove code fence markers if present
+        if markdown_table.startswith("```markdown"):
+            markdown_table = markdown_table[len("```markdown") :].strip()
+        elif markdown_table.startswith("```"):
+            markdown_table = markdown_table[3:].strip()
+
+        if markdown_table.endswith("```"):
+            markdown_table = markdown_table[:-3].strip()
+
+        return markdown_table
+
+    def _turn2_filter_debits(
+        self,
+        image_path: Path,
+        structure: TableStructure,
+        turn0_response: str,
+        turn1_response: str
+    ) -> str:
+        """
+        Turn 2: Filter to withdrawals only (remove empty debit rows).
+
+        Args:
+            image_path: Path to image
+            structure: Table structure with column mappings
+            turn0_response: Raw response from Turn 0 (structure detection)
+            turn1_response: Raw response from Turn 1 (3-column markdown table)
+
+        Returns:
+            Markdown table string with withdrawals only
+        """
+        # Load Turn 2 template (filter to withdrawals)
+        prompt_template = self.config.get_prompt_template(
+            "turn2_filter_debits_template"
+        )
+
+        # Format with actual column names
+        turn2_prompt = prompt_template.format(
+            date_column=structure.date_column,
+            description_column=structure.description_column,
+            debit_column=structure.debit_column,
+        )
+
+        # Build conversation history with Turn 0 and Turn 1
+        from langchain_core.messages import AIMessage, HumanMessage
+
+        # Get Turn 0 and Turn 1 prompts for conversation history
+        turn0_prompt = self.config.get_prompt_template("structure_detection_template")
+        turn1_prompt_template = self.config.get_prompt_template("turn1_3column_template")
+        turn1_prompt = turn1_prompt_template.format(
+            date_column=structure.date_column,
+            description_column=structure.description_column,
+            debit_column=structure.debit_column,
+        )
+
+        messages = [
+            # Turn 0: Structure detection
+            HumanMessage(
+                content=[
+                    {"type": "image_url", "image_url": {"url": str(image_path)}},
+                    {"type": "text", "text": turn0_prompt},
+                ]
+            ),
+            AIMessage(content=turn0_response),
+            # Turn 1: 3-column extraction
+            HumanMessage(
+                content=[
+                    {"type": "image_url", "image_url": {"url": str(image_path)}},
+                    {"type": "text", "text": turn1_prompt},
+                ]
+            ),
+            AIMessage(content=turn1_response),
+            # Turn 2: Filter to withdrawals
+            HumanMessage(
+                content=[
+                    {"type": "image_url", "image_url": {"url": str(image_path)}},
+                    {"type": "text", "text": turn2_prompt},
+                ]
+            ),
+        ]
+
+        # Get response with full conversation context
+        response = self.llm.invoke(messages)
+
+        # Clean up markdown formatting if present
+        markdown_table = response.content.strip()
+
+        # Remove code fence markers if present
+        if markdown_table.startswith("```markdown"):
+            markdown_table = markdown_table[len("```markdown") :].strip()
+        elif markdown_table.startswith("```"):
+            markdown_table = markdown_table[3:].strip()
+
+        if markdown_table.endswith("```"):
+            markdown_table = markdown_table[:-3].strip()
+
+        return markdown_table
 
     def _parse_column_response(self, response_text: str) -> List[str]:
         """

@@ -123,23 +123,31 @@ table_extraction_template: |
 # MULTI-TURN EXTRACTION PROMPTS
 # ============================================================================
 
-# Structure detection - Extract column headers and table type
+# Structure detection - Extract FULL markdown table + metadata
 structure_detection_template: |
-  Analyze the transaction table in this bank statement image.
+  Extract the transaction table from this bank statement image.
 
-  Identify:
-  1. The column headers (exact text as shown)
-  2. The table structure type
-  3. The estimated number of transaction rows
+  Task 1: Extract the COMPLETE table as markdown
+  - Include ALL columns (do not skip any columns)
+  - Include ALL rows (do not filter any rows)
+  - Preserve exact column header names
+  - Use proper markdown table format with pipes (|)
 
-  Look for:
-  - Are transactions grouped by date, or is each transaction on its own row?
-  - What are the exact column header names?
+  Task 2: Analyze the table structure
+  - FLAT: Each transaction has its OWN date in the date column (every row has a date)
+  - DATE_GROUPED: Multiple transactions share a single date header (some rows have blank dates)
 
-  Output ONLY in this format:
+  Output format:
   STRUCTURE_TYPE: [flat | date_grouped]
   COLUMN_HEADERS: [header1] | [header2] | [header3] | ...
   ESTIMATED_ROWS: [number]
+
+  MARKDOWN_TABLE:
+  | Header1 | Header2 | Header3 | ... |
+  |---------|---------|---------|-----|
+  | value1  | value2  | value3  | ... |
+  | value1  | value2  | value3  | ... |
+  ...
 
 # Column extraction - Extract values from a specific column
 column_extraction_template: |
@@ -147,20 +155,23 @@ column_extraction_template: |
 
   Find the column with the header "{column_name}".
 
-  Extract ALL values from the "{column_name}" column only.
+  Extract ALL data values from the "{column_name}" column.
   {additional_context}
 
-  Important:
-  - Extract ONLY from the "{column_name}" column
+  CRITICAL RULES:
+  - Extract ONLY actual data values from the "{column_name}" column (NOT from any other column)
+  - Do NOT extract the column header itself
+  - Do NOT extract any instruction text, markdown formatting, or bold text
   - Do NOT include values from other columns
+  - Extract ONLY the actual transaction data
   - List one value per line
   - If a cell is empty, write "NOT_FOUND"
-  - Extract values in the order they appear (top to bottom)
+  - Extract values in top-to-bottom order
 
-  Output format (one value per line):
-  [First value]
-  [Second value]
-  [Third value]
+  Output format (ONLY the actual data values, one per line):
+  value1
+  value2
+  value3
   ...
 
 # Date column extraction (specialized)
@@ -171,18 +182,60 @@ date_column_extraction_template: |
 
   Extract ALL date values from the "{column_name}" column.
 
-  Important:
+  CRITICAL RULES:
+  - Extract ONLY actual date values (e.g., "07/09/2025", "8/08/2025")
+  - Do NOT extract the column header itself
+  - Do NOT extract any instruction text, markdown formatting (like **bold**), or explanatory text
   - If the table uses date grouping (same date for multiple transactions), REPEAT the date for each transaction
   - Count the number of balance amounts shown for a date = number of times to repeat that date
   - Extract dates in the order transactions appear (top to bottom)
+  - Preserve the exact date format shown in the document (DD/MM/YYYY)
   - List one date per line
-  - Preserve the exact date format shown in the document
 
-  Output format (one date per line):
-  [First date]
-  [Second date]
-  [Third date]
+  Output format (ONLY the actual dates, one per line):
+  07/09/2025
+  07/09/2025
+  08/09/2025
   ...
+
+# Turn 1: Extract 3 columns (keep ALL rows)
+turn1_3column_template: |
+  I previously extracted a full markdown table from the bank statement.
+
+  Now, create a new markdown table with ONLY these 3 columns:
+  1. "{date_column}" - Keep this column
+  2. "{description_column}" - Keep this column
+  3. "{debit_column}" - Keep this column (withdrawal/debit amounts)
+
+  RULES:
+  - Keep ALL rows (do not remove any rows yet)
+  - Keep ONLY the 3 specified columns (remove all other columns)
+  - Preserve the exact values from the original table
+  - Maintain the same row order
+  - If "{debit_column}" is empty/blank in a row, keep the row but show empty value
+
+  Output the 3-column markdown table:
+  | {date_column} | {description_column} | {debit_column} |
+  |---------------|----------------------|----------------|
+  | ...all rows from original table... |
+
+# Turn 2: Remove empty debit rows (withdrawals only)
+turn2_filter_debits_template: |
+  I previously created a 3-column markdown table with columns: {date_column}, {description_column}, {debit_column}.
+
+  Now, remove rows where the "{debit_column}" column is empty or blank.
+  Keep ONLY rows that have a value in the "{debit_column}" column.
+
+  RULES:
+  - Remove rows where "{debit_column}" is empty/blank (these are deposits/credits)
+  - Keep rows where "{debit_column}" has a value (these are withdrawals/debits)
+  - Do not modify the column headers or values
+  - Maintain the same row order for kept rows
+
+  Output the filtered markdown table (withdrawals only):
+  | {date_column} | {description_column} | {debit_column} |
+  |---------------|----------------------|----------------|
+  | ...only rows with debit values... |
 
 # Field format guidelines
 field_format_guidelines:
