@@ -216,6 +216,7 @@ class VisionLanguageModel(BaseChatModel):
                 if isinstance(message, HumanMessage):
                     # Extract text and image
                     question_text = ""
+                    has_image = False
 
                     if isinstance(message.content, str):
                         question_text = message.content
@@ -229,9 +230,14 @@ class VisionLanguageModel(BaseChatModel):
                                     image_source = item.get("image_url", {}).get("url", "")
                                     if image_source:
                                         image = self._load_image(image_source)
+                                        has_image = True  # Track if this message has an image
                             elif isinstance(item, str):
                                 text_parts.append(item)
                         question_text = "\n".join(text_parts)
+
+                    # For InternVL3: Add <image> token to questions that have images
+                    if has_image:
+                        question_text = f"<image>\n{question_text}"
 
                     # Check if this is the last message (current question)
                     if i == len(messages) - 1:
@@ -590,14 +596,16 @@ class VisionLanguageModel(BaseChatModel):
             if self.top_p is not None:
                 generation_config["top_p"] = kwargs.get("top_p", self.top_p)
 
-        # InternVL3 requires <image> token in the question
-        question_with_image = f"<image>\n{question}"
+        # Note: <image> token is added by _build_conversation_history() when the message has an image
+        # For single-shot calls without history, add <image> if not already present
+        if not question.startswith("<image>"):
+            question = f"<image>\n{question}"
 
         # Use InternVL3's chat method with conversation history
         response = self._model.chat(
             tokenizer=self._processor,  # InternVL3 uses tokenizer
             pixel_values=pixel_values,
-            question=question_with_image,
+            question=question,
             generation_config=generation_config,
             history=history if history else None,  # Pass conversation history!
             return_history=False,
