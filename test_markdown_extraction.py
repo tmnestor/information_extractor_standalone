@@ -9,15 +9,18 @@ then we can programmatically parse and filter it.
 import sys
 from pathlib import Path
 
+import yaml
+from PIL import Image
+
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-import yaml  # noqa: E402
 from rich.console import Console  # noqa: E402
+from rich.progress import Progress, SpinnerColumn, TextColumn  # noqa: E402
 
-from common.image_processor import process_image_for_model  # noqa: E402
-from common.model_loader import load_model  # noqa: E402
+from common.config import get_yaml_config  # noqa: E402
+from common.llama_model_loader import load_llama_model  # noqa: E402
 
 # Use IPython display if available, fallback to print
 try:
@@ -28,6 +31,34 @@ except ImportError:
     from rich.markdown import Markdown as RichMarkdown
 
 console = Console()
+
+
+def load_model(model_name: str = "llama-3.2-11b-vision"):
+    """Load vision-language model."""
+    console.print(f"\n[bold cyan]Loading model: {model_name}[/bold cyan]")
+
+    config = get_yaml_config()
+    model_config = config.get_model_config(model_name)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task(f"Loading {model_name}...", total=None)
+
+        model, processor = load_llama_model(
+            model_path=model_config.model_id,
+            use_quantization=False,
+            device_map=model_config.device_map,
+            torch_dtype=model_config.torch_dtype,
+            max_new_tokens=model_config.max_new_tokens,
+        )
+
+        progress.update(task, completed=True)
+
+    console.print("[green]✅ Model loaded successfully[/green]")
+    return model, processor
 
 
 def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-vision"):
@@ -42,7 +73,6 @@ def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-
         Markdown table string
     """
     # Load model
-    console.print(f"[cyan]Loading model: {model_name}[/cyan]")
     model, processor = load_model(model_name)
 
     # Load table extraction prompt
@@ -51,8 +81,8 @@ def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-
 
     table_prompt = config["table_extraction_template"]
 
-    # Process image
-    image = process_image_for_model(image_path, processor)
+    # Load image
+    image = Image.open(image_path)
 
     # Create prompt
     messages = [
