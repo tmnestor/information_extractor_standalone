@@ -119,6 +119,71 @@ table_extraction_template: |
 
   Extract ALL rows - do not filter or skip any transactions.
 
+# ============================================================================
+# MULTI-TURN EXTRACTION PROMPTS
+# ============================================================================
+
+# Structure detection - Extract column headers and table type
+structure_detection_template: |
+  Analyze the transaction table in this bank statement image.
+
+  Identify:
+  1. The column headers (exact text as shown)
+  2. The table structure type
+  3. The estimated number of transaction rows
+
+  Look for:
+  - Are transactions grouped by date, or is each transaction on its own row?
+  - What are the exact column header names?
+
+  Output ONLY in this format:
+  STRUCTURE_TYPE: [flat | date_grouped]
+  COLUMN_HEADERS: [header1] | [header2] | [header3] | ...
+  ESTIMATED_ROWS: [number]
+
+# Column extraction - Extract values from a specific column
+column_extraction_template: |
+  Look at the transaction table in this bank statement.
+
+  Find the column with the header "{column_name}".
+
+  Extract ALL values from the "{column_name}" column only.
+  {additional_context}
+
+  Important:
+  - Extract ONLY from the "{column_name}" column
+  - Do NOT include values from other columns
+  - List one value per line
+  - If a cell is empty, write "NOT_FOUND"
+  - Extract values in the order they appear (top to bottom)
+
+  Output format (one value per line):
+  [First value]
+  [Second value]
+  [Third value]
+  ...
+
+# Date column extraction (specialized)
+date_column_extraction_template: |
+  Look at the transaction table in this bank statement.
+
+  Find the column with the header "{column_name}".
+
+  Extract ALL date values from the "{column_name}" column.
+
+  Important:
+  - If the table uses date grouping (same date for multiple transactions), REPEAT the date for each transaction
+  - Count the number of balance amounts shown for a date = number of times to repeat that date
+  - Extract dates in the order transactions appear (top to bottom)
+  - List one date per line
+  - Preserve the exact date format shown in the document
+
+  Output format (one date per line):
+  [First date]
+  [Second date]
+  [Third date]
+  ...
+
 # Field format guidelines
 field_format_guidelines:
   text: "Plain text exactly as shown"
