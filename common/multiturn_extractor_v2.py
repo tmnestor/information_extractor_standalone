@@ -363,11 +363,15 @@ class MultiTurnExtractorV2:
 
             # Parse bullet point headers
             elif in_headers_section:
-                if line.startswith("*"):
+                if not line:
+                    # Skip empty lines within headers section
+                    continue
+                elif line.startswith("*") and not line.startswith("**"):
+                    # Bullet point header (but not markdown bold)
                     header = line[1:].strip()
                     column_headers.append(header)
-                elif line.startswith("**") or not line:
-                    # End of headers section
+                elif line.startswith("**"):
+                    # End of headers section (new markdown section)
                     in_headers_section = False
 
             # Estimated Rows
