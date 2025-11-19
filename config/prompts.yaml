@@ -97,11 +97,34 @@ table_extraction_template: |
   - Preserve exact spacing and alignment
 
   CRITICAL COLUMN RULES:
-  - Each row must have EITHER Withdrawal OR Deposit filled, NEVER both
-  - If a transaction reduces the balance, put the amount in Withdrawal column (put "NOT_FOUND" in Deposit)
-  - If a transaction increases the balance, put the amount in Deposit column (put "NOT_FOUND" in Withdrawal)
-  - Use "NOT_FOUND" for the unused column (do not use empty string or blank)
-  - NEVER put the same amount in both Withdrawal and Deposit columns
+
+  ⚠️ RULE 1: Read each column independently - DO NOT COPY values between columns!
+  - Withdrawal column: Contains withdrawal/debit amounts (money OUT)
+  - Deposit column: Contains deposit/credit amounts (money IN)
+  - Balance column: Contains running balance after transaction
+  - These are THREE DIFFERENT VALUES - never duplicate between columns!
+
+  ⚠️ RULE 2: NEVER duplicate Balance into Withdrawal or Deposit columns!
+  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit copied from Balance!
+  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 |
+  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal copied from Balance!
+  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 |
+
+  ⚠️ RULE 3: Each transaction is EITHER withdrawal OR deposit (not both)
+  - Look at the image carefully - find which column has the amount
+  - If Withdrawal column (in image) has an amount → extract it, put "NOT_FOUND" in Deposit
+  - If Deposit column (in image) has an amount → extract it, put "NOT_FOUND" in Withdrawal
+  - If column is blank/empty in image → use "NOT_FOUND" (don't copy from Balance!)
+
+  ⚠️ RULE 4: If you can't read a value clearly, use "NOT_FOUND"
+  - DO NOT guess or copy from other columns
+  - DO NOT use the Balance value for Withdrawal or Deposit
+  - Better to say "NOT_FOUND" than to copy the wrong value
+
+  ⚠️ RULE 5: Column position matters - read left to right carefully
+  - Column order is typically: Date | Description | Withdrawal | Deposit | Balance
+  - Don't mix up Withdrawal and Deposit columns
+  - The rightmost column is usually Balance
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -135,11 +158,34 @@ structure_detection_template: |
   - Preserve exact spacing and alignment
 
   CRITICAL COLUMN RULES:
-  - Each row must have EITHER Withdrawal OR Deposit filled, NEVER both
-  - If a transaction reduces the balance, put the amount in Withdrawal column (put "NOT_FOUND" in Deposit)
-  - If a transaction increases the balance, put the amount in Deposit column (put "NOT_FOUND" in Withdrawal)
-  - Use "NOT_FOUND" for the unused column (do not use empty string or blank)
-  - NEVER put the same amount in both Withdrawal and Deposit columns
+
+  ⚠️ RULE 1: Read each column independently - DO NOT COPY values between columns!
+  - Withdrawal column: Contains withdrawal/debit amounts (money OUT)
+  - Deposit column: Contains deposit/credit amounts (money IN)
+  - Balance column: Contains running balance after transaction
+  - These are THREE DIFFERENT VALUES - never duplicate between columns!
+
+  ⚠️ RULE 2: NEVER duplicate Balance into Withdrawal or Deposit columns!
+  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit copied from Balance!
+  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 |
+  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal copied from Balance!
+  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 |
+
+  ⚠️ RULE 3: Each transaction is EITHER withdrawal OR deposit (not both)
+  - Look at the image carefully - find which column has the amount
+  - If Withdrawal column (in image) has an amount → extract it, put "NOT_FOUND" in Deposit
+  - If Deposit column (in image) has an amount → extract it, put "NOT_FOUND" in Withdrawal
+  - If column is blank/empty in image → use "NOT_FOUND" (don't copy from Balance!)
+
+  ⚠️ RULE 4: If you can't read a value clearly, use "NOT_FOUND"
+  - DO NOT guess or copy from other columns
+  - DO NOT use the Balance value for Withdrawal or Deposit
+  - Better to say "NOT_FOUND" than to copy the wrong value
+
+  ⚠️ RULE 5: Column position matters - read left to right carefully
+  - Column order is typically: Date | Description | Withdrawal | Deposit | Balance
+  - Don't mix up Withdrawal and Deposit columns
+  - The rightmost column is usually Balance
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -149,9 +195,26 @@ structure_detection_template: |
   - Do NOT combine multiple transactions into a single row
   - Count the number of balances shown = number of rows to create for that date
 
-  Task 1: Analyze the table structure
-  - FLAT: Each transaction has its OWN date in the date column (every row has a date)
-  - DATE_GROUPED: Multiple transactions share a single date header (some rows have blank dates)
+  Task 1: Analyze the table structure - Choose ONE structure type:
+
+  🔵 FLAT Structure:
+  - Every transaction row has a populated Date column
+  - Date column is NEVER blank or empty
+  - Number of dates = number of transactions
+  - Each row is a complete independent transaction
+
+  🟠 DATE_GROUPED Structure:
+  - Date appears once as a header/label for multiple transactions
+  - Transactions below the date have BLANK/EMPTY Date cells
+  - Number of dates < number of transactions
+  - Transactions are grouped/nested under date headers
+
+  CLASSIFICATION METHOD:
+  Step 1: Count total transaction rows (count Balance column entries)
+  Step 2: Count populated Date cells (non-blank dates)
+  Step 3: Compare counts:
+    - If populated dates = total transactions → FLAT
+    - If populated dates < total transactions → DATE_GROUPED
 
   Task 2: Extract metadata and full table
 
