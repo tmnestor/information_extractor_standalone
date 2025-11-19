@@ -90,6 +90,12 @@ extraction_template: |
 table_extraction_template: |
   Extract the transaction table from this bank statement image as markdown.
 
+  STEP-BY-STEP PROCESS:
+  1. First, locate the column headers and note their POSITIONS (left to right)
+  2. For each row, read values according to those fixed column POSITIONS
+  3. If a position has no value (empty cell), write "NOT_FOUND" for that position
+  4. DO NOT skip empty positions - every row must have the same number of columns
+
   Look at the bank statement and find the main transaction table.
   Extract ALL rows from the table exactly as shown, including:
   - All column headers
@@ -98,35 +104,50 @@ table_extraction_template: |
 
   CRITICAL COLUMN RULES:
 
-  ⚠️ RULE 1: Read each column independently - DO NOT COPY values between columns!
+  ⚠️ RULE 1: Read columns by POSITION, not by content!
+  - First, identify the VERTICAL POSITION of each column by looking at the headers
+  - The Withdrawal column is always in the SAME POSITION for every row
+  - The Deposit column is always in the SAME POSITION for every row
+  - The Balance column is always in the SAME POSITION for every row
+  - DO NOT shift columns when you encounter empty cells!
+  - Empty cells still OCCUPY SPACE - write "NOT_FOUND" for them, don't skip them!
+
+  ⚠️ RULE 2: NEVER skip over empty cells - they still count as columns!
+  - If Withdrawal is empty → write "NOT_FOUND" in that column position
+  - If Deposit is empty → write "NOT_FOUND" in that column position
+  - DO NOT read the next value and put it in the empty cell's position
+  - Each row must have the SAME NUMBER of columns
+
+  ⚠️ RULE 3: Read each column independently - DO NOT COPY values between columns!
   - Withdrawal column: Contains withdrawal/debit amounts (money OUT)
   - Deposit column: Contains deposit/credit amounts (money IN)
   - Balance column: Contains running balance after transaction
   - These are THREE DIFFERENT VALUES - never duplicate between columns!
 
-  ⚠️ RULE 2: NEVER duplicate Balance into Withdrawal or Deposit columns!
+  ⚠️ RULE 4: NEVER duplicate Balance into Withdrawal or Deposit columns!
   - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit copied from Balance!
   - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 |
   - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal copied from Balance!
   - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 |
 
-  ⚠️ RULE 3: Each transaction is EITHER withdrawal OR deposit (not both)
+  ⚠️ RULE 5: Each transaction is EITHER withdrawal OR deposit (not both)
   - Look at the image carefully - find which column has the amount
   - If Withdrawal column (in image) has an amount → extract it, put the text "NOT_FOUND" in Deposit
   - If Deposit column (in image) has an amount → extract it, put the text "NOT_FOUND" in Withdrawal
   - If column is blank/empty in image → write the text "NOT_FOUND" (don't copy from Balance!)
   - "NOT_FOUND" is a literal text string - write these exact 9 characters, NOT an empty/blank cell!
 
-  ⚠️ RULE 4: If you can't read a value clearly, write the text "NOT_FOUND"
+  ⚠️ RULE 6: If you can't read a value clearly, write the text "NOT_FOUND"
   - DO NOT guess or copy from other columns
   - DO NOT use the Balance value for Withdrawal or Deposit
   - DO NOT leave cells empty/blank - always write "NOT_FOUND" for missing values
   - Better to say "NOT_FOUND" than to copy the wrong value
 
-  ⚠️ RULE 5: Column position matters - read left to right carefully
-  - Column order is typically: Date | Description | Withdrawal | Deposit | Balance
-  - Don't mix up Withdrawal and Deposit columns
-  - The rightmost column is usually Balance
+  ⚠️ RULE 7: Verify column alignment for EVERY row
+  - Count the column positions: 1=Date, 2=Description, 3=Withdrawal, 4=Deposit, 5=Balance
+  - Make sure each row has exactly 5 values (use "NOT_FOUND" to fill empty positions)
+  - The rightmost value should ALWAYS be Balance
+  - If you see the same value in both Deposit and Balance columns → you made a mistake!
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -144,12 +165,21 @@ table_extraction_template: |
   | ...  | ...         | ...        | ...     | ...     |
 
   IMPORTANT: For missing/empty values, use the literal text "NOT_FOUND" (9 characters):
-  ✅ CORRECT examples:
-  | 07/09/2025 | EFTPOS Cash Out | $322.18 | NOT_FOUND | $48890.58 |  ← Withdrawal transaction
-  | 02/09/2025 | Salary Payment | NOT_FOUND | $8105.71 | $51511.48 |  ← Deposit transaction
+
+  ✅ CORRECT - Each row has 5 columns (empty cells filled with "NOT_FOUND"):
+  | DD/MM/YYYY | Withdrawal Transaction | $XXX.XX | NOT_FOUND | $YYYY.YY |  ← Withdrawal only
+  | DD/MM/YYYY | Deposit Transaction | NOT_FOUND | $AAA.AA | $BBBB.BB |  ← Deposit only
+
+  ❌ WRONG - Column shift (Balance copied to Deposit position):
+  | DD/MM/YYYY | Purchase Description | $100.00 | $5000.00 | $5500.00 |
+  Problem: $5000.00 appears in BOTH Deposit and Balance columns - this is impossible!
+  The $5000.00 is actually the Balance, not a Deposit amount.
+
+  ✅ CORRECT version of above row:
+  | DD/MM/YYYY | Purchase Description | $100.00 | NOT_FOUND | $5000.00 |  ← Deposit empty = "NOT_FOUND"
 
   ❌ WRONG - DO NOT use empty cells:
-  | 02/09/2025 | Salary Payment |  | $8105.71 | $51511.48 |  ← NO! Write "NOT_FOUND" instead of blank!
+  | DD/MM/YYYY | Income Description |  | $AAA.AA | $BBBB.BB |  ← NO! Write "NOT_FOUND" instead of blank!
 
   Extract ALL rows - do not filter or skip any transactions.
 
@@ -161,6 +191,12 @@ table_extraction_template: |
 structure_detection_template: |
   Extract the transaction table from this bank statement image as markdown.
 
+  STEP-BY-STEP PROCESS:
+  1. First, locate the column headers and note their POSITIONS (left to right)
+  2. For each row, read values according to those fixed column POSITIONS
+  3. If a position has no value (empty cell), write "NOT_FOUND" for that position
+  4. DO NOT skip empty positions - every row must have the same number of columns
+
   Look at the bank statement and find the main transaction table.
   Extract ALL rows from the table exactly as shown, including:
   - All column headers
@@ -169,35 +205,50 @@ structure_detection_template: |
 
   CRITICAL COLUMN RULES:
 
-  ⚠️ RULE 1: Read each column independently - DO NOT COPY values between columns!
+  ⚠️ RULE 1: Read columns by POSITION, not by content!
+  - First, identify the VERTICAL POSITION of each column by looking at the headers
+  - The Withdrawal column is always in the SAME POSITION for every row
+  - The Deposit column is always in the SAME POSITION for every row
+  - The Balance column is always in the SAME POSITION for every row
+  - DO NOT shift columns when you encounter empty cells!
+  - Empty cells still OCCUPY SPACE - write "NOT_FOUND" for them, don't skip them!
+
+  ⚠️ RULE 2: NEVER skip over empty cells - they still count as columns!
+  - If Withdrawal is empty → write "NOT_FOUND" in that column position
+  - If Deposit is empty → write "NOT_FOUND" in that column position
+  - DO NOT read the next value and put it in the empty cell's position
+  - Each row must have the SAME NUMBER of columns
+
+  ⚠️ RULE 3: Read each column independently - DO NOT COPY values between columns!
   - Withdrawal column: Contains withdrawal/debit amounts (money OUT)
   - Deposit column: Contains deposit/credit amounts (money IN)
   - Balance column: Contains running balance after transaction
   - These are THREE DIFFERENT VALUES - never duplicate between columns!
 
-  ⚠️ RULE 2: NEVER duplicate Balance into Withdrawal or Deposit columns!
+  ⚠️ RULE 4: NEVER duplicate Balance into Withdrawal or Deposit columns!
   - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit copied from Balance!
   - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 |
   - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal copied from Balance!
   - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 |
 
-  ⚠️ RULE 3: Each transaction is EITHER withdrawal OR deposit (not both)
+  ⚠️ RULE 5: Each transaction is EITHER withdrawal OR deposit (not both)
   - Look at the image carefully - find which column has the amount
   - If Withdrawal column (in image) has an amount → extract it, put the text "NOT_FOUND" in Deposit
   - If Deposit column (in image) has an amount → extract it, put the text "NOT_FOUND" in Withdrawal
   - If column is blank/empty in image → write the text "NOT_FOUND" (don't copy from Balance!)
   - "NOT_FOUND" is a literal text string - write these exact 9 characters, NOT an empty/blank cell!
 
-  ⚠️ RULE 4: If you can't read a value clearly, write the text "NOT_FOUND"
+  ⚠️ RULE 6: If you can't read a value clearly, write the text "NOT_FOUND"
   - DO NOT guess or copy from other columns
   - DO NOT use the Balance value for Withdrawal or Deposit
   - DO NOT leave cells empty/blank - always write "NOT_FOUND" for missing values
   - Better to say "NOT_FOUND" than to copy the wrong value
 
-  ⚠️ RULE 5: Column position matters - read left to right carefully
-  - Column order is typically: Date | Description | Withdrawal | Deposit | Balance
-  - Don't mix up Withdrawal and Deposit columns
-  - The rightmost column is usually Balance
+  ⚠️ RULE 7: Verify column alignment for EVERY row
+  - Count the column positions: 1=Date, 2=Description, 3=Withdrawal, 4=Deposit, 5=Balance
+  - Make sure each row has exactly 5 values (use "NOT_FOUND" to fill empty positions)
+  - The rightmost value should ALWAYS be Balance
+  - If you see the same value in both Deposit and Balance columns → you made a mistake!
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -249,12 +300,21 @@ structure_detection_template: |
   ...
 
   IMPORTANT: For missing/empty values, use the literal text "NOT_FOUND" (9 characters):
-  ✅ CORRECT examples:
-  | 07/09/2025 | EFTPOS Cash Out | $322.18 | NOT_FOUND | $48890.58 |  ← Withdrawal transaction
-  | 02/09/2025 | Salary Payment | NOT_FOUND | $8105.71 | $51511.48 |  ← Deposit transaction
+
+  ✅ CORRECT - Each row has 5 columns (empty cells filled with "NOT_FOUND"):
+  | DD/MM/YYYY | Withdrawal Transaction | $XXX.XX | NOT_FOUND | $YYYY.YY |  ← Withdrawal only
+  | DD/MM/YYYY | Deposit Transaction | NOT_FOUND | $AAA.AA | $BBBB.BB |  ← Deposit only
+
+  ❌ WRONG - Column shift (Balance copied to Deposit position):
+  | DD/MM/YYYY | Purchase Description | $100.00 | $5000.00 | $5500.00 |
+  Problem: $5000.00 appears in BOTH Deposit and Balance columns - this is impossible!
+  The $5000.00 is actually the Balance, not a Deposit amount.
+
+  ✅ CORRECT version of above row:
+  | DD/MM/YYYY | Purchase Description | $100.00 | NOT_FOUND | $5000.00 |  ← Deposit empty = "NOT_FOUND"
 
   ❌ WRONG - DO NOT use empty cells:
-  | 02/09/2025 | Salary Payment |  | $8105.71 | $51511.48 |  ← NO! Write "NOT_FOUND" instead of blank!
+  | DD/MM/YYYY | Income Description |  | $AAA.AA | $BBBB.BB |  ← NO! Write "NOT_FOUND" instead of blank!
 
   Extract ALL rows - do not filter or skip any transactions.
 
@@ -292,7 +352,7 @@ date_column_extraction_template: |
   Extract ALL date values from the "{column_name}" column.
 
   CRITICAL RULES:
-  - Extract ONLY actual date values (e.g., "07/09/2025", "8/08/2025")
+  - Extract ONLY actual date values (e.g., "DD/MM/YYYY", "M/DD/YYYY")
   - Do NOT extract the column header itself
   - Do NOT extract any instruction text, markdown formatting (like **bold**), or explanatory text
   - If the table uses date grouping (same date for multiple transactions), REPEAT the date for each transaction
@@ -302,9 +362,9 @@ date_column_extraction_template: |
   - List one date per line
 
   Output format (ONLY the actual dates, one per line):
-  07/09/2025
-  07/09/2025
-  08/09/2025
+  DD/MM/YYYY
+  DD/MM/YYYY
+  DD/MM/YYYY
   ...
 
 # Turn 1: Filter to 3 columns (TEXT FILTERING ONLY - DO NOT RE-EXTRACT)
@@ -333,7 +393,7 @@ turn1_3column_template: |
   - Do NOT look at the bank statement image again
   - Do NOT re-extract data from the image
   - Do NOT "correct" or "fix" any values
-  - Do NOT add missing digits (e.g., if it says $322.18, do NOT change to $3322.18)
+  - Do NOT add missing digits (e.g., if it says $123.45, do NOT change to $1123.45)
   - Do NOT remove extra digits (keep values exactly as shown)
   - Do NOT change "NOT_FOUND" to a dollar amount
   - Do NOT change dollar amounts to "NOT_FOUND"
@@ -342,11 +402,11 @@ turn1_3column_template: |
   - Do NOT skip or add rows
 
   ✅ CORRECT BEHAVIOR - COPY EXACTLY:
-  If original table row says: | 07/09/2025 | EFTPOS Cash Out... | $322.18 | NOT_FOUND | $48890.58 |
-  Your output should be: | 07/09/2025 | EFTPOS Cash Out... | $322.18 |
+  If original table row says: | DD/MM/YYYY | Withdrawal Description... | $XXX.XX | NOT_FOUND | $YYYY.YY |
+  Your output should be: | DD/MM/YYYY | Withdrawal Description... | $XXX.XX |
 
-  If original table row says: | 02/09/2025 | Salary Payment... | NOT_FOUND | $8105.71 | $51511.48 |
-  Your output should be: | 02/09/2025 | Salary Payment... | NOT_FOUND |
+  If original table row says: | DD/MM/YYYY | Deposit Description... | NOT_FOUND | $AAA.AA | $BBBB.BB |
+  Your output should be: | DD/MM/YYYY | Deposit Description... | NOT_FOUND |
 
   REMEMBER: You are FILTERING columns (removing unwanted columns), NOT extracting data!
   Source: My previous response (the text I already gave you)
@@ -376,12 +436,12 @@ turn2_filter_debits_template: |
   - Output ONLY the filtered rows with actual dollar amounts
 
   Examples of rows to REMOVE (deposits/credits):
-  | 02/09/2025 | Salary Payment ATO | NOT_FOUND |  ← Remove (has "NOT_FOUND")
-  | 01/09/2025 | DIRECT CREDIT SALARY |  |  ← Remove (empty cell)
+  | DD/MM/YYYY | Income Payment Description | NOT_FOUND |  ← Remove (has "NOT_FOUND")
+  | DD/MM/YYYY | Deposit Description |  |  ← Remove (empty cell)
 
   Examples of rows to KEEP (withdrawals/debits):
-  | 07/09/2025 | EFTPOS Cash Out | $322.18 |  ← Keep (has dollar amount)
-  | 04/09/2025 | Mortgage Repayment | $649.79 |  ← Keep (has dollar amount)
+  | DD/MM/YYYY | Withdrawal Description | $XXX.XX |  ← Keep (has dollar amount)
+  | DD/MM/YYYY | Payment Description | $YYY.YY |  ← Keep (has dollar amount)
 
   Output the filtered markdown table (withdrawals only - rows with dollar amounts):
   | {date_column} | {description_column} | {debit_column} |
@@ -551,10 +611,10 @@ model_specific_document_instructions:
         BLANK Withdrawal = CREDIT/DEPOSIT = Money IN = SKIP THE ENTIRE ROW!
 
         Common credit transactions to SKIP (Withdrawal always blank):
-        - DIRECT CREDIT SALARY (Withdrawal blank)
-        - PAYROLL DEPOSIT (Withdrawal blank)
-        - INTEREST PAYMENT (Withdrawal blank)
-        - TAX REFUND (Withdrawal blank)
+        - INCOME DEPOSIT (Withdrawal blank)
+        - PAYROLL CREDIT (Withdrawal blank)
+        - INTEREST CREDIT (Withdrawal blank)
+        - REFUND (Withdrawal blank)
         - Any description where Withdrawal column is empty/blank
 
         RULE 2: NEVER READ AMOUNTS FROM THE DEPOSIT COLUMN
@@ -744,22 +804,22 @@ model_specific_document_instructions:
 
         DO NOT EXTRACT:
         ✗ Rows where Withdrawal is blank (even if Deposit has value)
-        ✗ DIRECT CREDIT SALARY (Withdrawal blank)
-        ✗ INTEREST PAYMENT (Withdrawal blank)
-        ✗ PAYROLL DEPOSIT (Withdrawal blank)
+        ✗ INCOME DEPOSIT (Withdrawal blank)
+        ✗ INTEREST CREDIT (Withdrawal blank)
+        ✗ PAYROLL CREDIT (Withdrawal blank)
         ✗ Any row with blank Withdrawal column
 
         EXTRACT ONLY:
         ✓ Rows with dollar amount in Withdrawal column
-        ✓ EFTPOS PURCHASE (has Withdrawal amount)
-        ✓ ATM WITHDRAWAL (has Withdrawal amount)
-        ✓ ONLINE PURCHASE (has Withdrawal amount)
+        ✓ PURCHASE (has Withdrawal amount)
+        ✓ WITHDRAWAL (has Withdrawal amount)
+        ✓ PAYMENT (has Withdrawal amount)
 
         VISUAL CHECK:
         Date       | Description          | Withdrawal | Deposit | Balance
-        22/02/2024 | SHOPPING MALL       | $33.75     |         | $1,966.25  ← EXTRACT (has Withdrawal)
-        23/02/2024 | SALARY CREDIT       |            | $4,200  | $6,166.25  ← SKIP (Withdrawal blank)
-        24/02/2024 | CASH WITHDRAWAL     | $150.00    |         | $6,016.25  ← EXTRACT (has Withdrawal)
+        DD/MM/YYYY | STORE PURCHASE      | $XX.XX     |         | $YYYY.YY  ← EXTRACT (has Withdrawal)
+        DD/MM/YYYY | INCOME CREDIT       |            | $AAAA   | $BBBB.BB  ← SKIP (Withdrawal blank)
+        DD/MM/YYYY | ATM WITHDRAWAL      | $ZZZ.ZZ    |         | $CCCC.CC  ← EXTRACT (has Withdrawal)
 
         For each row with Withdrawal amount, extract:
         - Transaction date (DD/MM/YYYY)
@@ -840,27 +900,27 @@ model_specific_document_instructions:
       - Has amount in "Withdrawal" or "Debit" column
       - OR has negative sign: "-$100.00" or "-100.00"
       - Balance DECREASES
-      - Examples: ATM withdrawal, EFTPOS purchase, online payment, fees
-      - Keywords: withdrawal, purchase, payment, ATM, EFTPOS, fee
+      - Examples: withdrawals, purchases, payments, fees
+      - Keywords: withdrawal, purchase, payment, debit, fee
 
       DEPOSIT/CREDIT (Skip - money IN):
       - Has amount in "Deposit" or "Credit" column
       - Withdrawal/Debit column is BLANK
       - OR has positive sign: "+$500.00" or no sign
       - Balance INCREASES
-      - Examples: Salary, deposits, interest
+      - Examples: income, deposits, interest
       - Keywords: salary, deposit, credit, interest, transfer in, refund
 
       Identify withdrawals by:
       1. For 5-column: Withdrawal/Debit column has AMOUNT (not blank, not "-")
       2. For 3-4 column: Amount has "-" prefix/negative number
       3. Balance DECREASED from previous row
-      4. Description keywords (purchase, withdrawal, ATM, EFTPOS, payment, fee)
+      4. Description keywords (purchase, withdrawal, payment, fee)
 
       ⚠️ CRITICAL RULES:
       - If Withdrawal/Debit column is BLANK but Deposit/Credit column has value → SKIP!
-      - Do NOT extract "DIRECT CREDIT SALARY" - Withdrawal column is blank
-      - Do NOT extract "INTEREST PAYMENT" - Withdrawal column is blank
+      - Do NOT extract income/salary transactions - Withdrawal column is blank
+      - Do NOT extract interest/refund transactions - Withdrawal column is blank
       - ONLY extract rows where Withdrawal/Debit column has a dollar amount
 
       Output format (5 FIELDS):
