@@ -224,36 +224,114 @@ model_specific_document_instructions:
     bank_statement: |
       ## STEP-BY-STEP BANK STATEMENT EXTRACTION:
 
-      CRITICAL: Extract ONLY DEBIT/WITHDRAWAL transactions (money OUT) for expense tracking.
-      IGNORE deposits and credits (money IN) - we only need expenses.
+      ⚠️ CRITICAL REQUIREMENT ⚠️
+      Extract ONLY DEBIT/WITHDRAWAL transactions (money OUT) for expense tracking.
+      IGNORE ALL deposits and credits (money IN) - we only need expenses.
 
       ### STEP 1 - LOCATE TRANSACTION TABLE:
       Focus on the main transaction table (usually center/body area).
-      Columns: Date | Description | Debit/Withdrawal | Credit/Deposit | Balance
-      Ignore: Headers, footers, summaries, advertisements
+      Common column layouts:
+      - 5-column: Date | Description | Debit | Credit | Balance
+      - 5-column: Date | Description | Withdrawal | Deposit | Balance
+      - 4-column: Date | Description | Amount | Balance (debits have "-" prefix, credits have "+" prefix)
+      - 3-column: Date | Description | Amount (debits negative, credits positive)
+      Ignore: Headers, footers, summary sections, advertisements
 
-      ### STEP 2 - IDENTIFY DEBIT TRANSACTIONS:
-      TARGET COLUMNS: Date + Description + Debit/Withdrawal amount
+      ### STEP 2 - UNDERSTAND CREDITS vs DEBITS:
 
-      For each row check:
-      - Has value in DEBIT/WITHDRAWAL column? → Extract this row
-      - Has value in CREDIT/DEPOSIT column only? → SKIP this row
-      - DEBIT keywords: withdrawal, payment, purchase, debit, fee, charge, ATM, EFTPOS
-      - CREDIT keywords to skip: deposit, credit, salary, transfer in, interest received
+      **DEBIT/WITHDRAWAL = Money OUT (EXTRACT THESE):**
+      - Shows in "Debit" or "Withdrawal" column
+      - OR has negative sign: "-$100.00" or "-100.00"
+      - Causes balance to DECREASE
+      - Examples: Purchases, ATM withdrawals, fees, bill payments, transfers OUT
+      - Common transaction types:
+        * EFTPOS PURCHASE
+        * ATM WITHDRAWAL
+        * DIRECT DEBIT
+        * ONLINE PURCHASE
+        * CARD PAYMENT
+        * BANK FEE
+        * TRANSFER OUT
+        * BILL PAYMENT
 
-      ### STEP 3 - EXTRACT ROW-BY-ROW:
-      For EACH debit row:
+      **CREDIT/DEPOSIT = Money IN (SKIP THESE ENTIRELY):**
+      - Shows in "Credit" or "Deposit" column
+      - Debit column is EMPTY (blank/space) or shows "-" (dash/hyphen)
+      - OR has positive sign: "+$500.00" or no sign for deposits
+      - Causes balance to INCREASE
+      - Examples: Salary, deposits, transfers IN, interest, refunds
+      - Common transaction types to SKIP:
+        * DIRECT CREDIT SALARY
+        * DEPOSIT
+        * TRANSFER IN
+        * INTEREST PAYMENT
+        * REFUND
+        * CREDIT ADJUSTMENT
+
+      **VISUAL EXAMPLES - 5 Column Statement:**
+
+      Example A (using "-" dash for empty):
+      Date       | Description        | Debit   | Credit   | Balance
+      01/03/2024 | GROCERIES STORE   | $45.20  | -        | $2,154.80  ← EXTRACT (has debit amount)
+      02/03/2024 | PAYROLL DEPOSIT   | -       | $2,800.00| $4,954.80  ← SKIP (debit empty: dash)
+      03/03/2024 | FUEL STATION      | $67.30  | -        | $4,887.50  ← EXTRACT (has debit amount)
+      04/03/2024 | TAX REFUND        | -       | $156.00  | $5,043.50  ← SKIP (debit empty: dash)
+
+      Example B (using " " space for empty):
+      Date       | Description        | Debit   | Credit   | Balance
+      15/06/2024 | RESTAURANT        | $38.50  |          | $1,461.50  ← EXTRACT (has debit amount)
+      16/06/2024 | WAGES PAID        |         | $1,950.00| $3,411.50  ← SKIP (debit empty: space)
+      17/06/2024 | PHARMACY          | $24.80  |          | $3,386.70  ← EXTRACT (has debit amount)
+      18/06/2024 | DIVIDEND INCOME   |         | $42.30   | $3,429.00  ← SKIP (debit empty: space)
+
+      ### STEP 3 - IDENTIFY DEBIT ROWS (Use ALL these checks):
+
+      For EACH transaction row, verify it's a DEBIT by checking:
+
+      ✓ CHECK 1 - Column Value & Sign:
+
+      For 5-COLUMN statements (Date | Description | Debit | Credit | Balance):
+      - Debit column has AMOUNT (e.g., "$100.00", "100.00")? → DEBIT (extract)
+      - Debit column is EMPTY (blank/space) or has "-" dash? → CREDIT (skip - money IN, not wanted)
+      - Credit column has AMOUNT? → CREDIT (skip - money IN, not wanted)
+
+      For 3-4 COLUMN statements with single amount column:
+      - Amount has "-" prefix (e.g., "-$100.00")? → DEBIT (extract)
+      - Amount has "+" prefix or no sign (e.g., "+$500.00")? → CREDIT (skip)
+      - Negative number (e.g., -100.00)? → DEBIT (extract)
+      - Positive number (e.g., +100.00, 100.00)? → CREDIT (skip)
+
+      ✓ CHECK 2 - Balance Movement:
+      - Balance DECREASED compared to previous row? → DEBIT (extract)
+      - Balance INCREASED compared to previous row? → CREDIT (skip)
+
+      ✓ CHECK 3 - Description Keywords:
+      - DEBIT indicators: withdrawal, purchase, payment, ATM, EFTPOS, fee, charge, debit
+      - CREDIT indicators: salary, deposit, credit, interest, transfer in, refund
+
+      ✓ CHECK 4 - Transaction Type:
+      - Expense-related (buy goods/services, withdraw cash, pay bills)? → DEBIT
+      - Income-related (receive money, get paid, deposits)? → CREDIT
+
+      ### STEP 4 - EXTRACT DEBIT ROWS ONLY:
+
+      For EACH row that passes ALL debit checks above:
       1. Extract DATE (DD/MM/YYYY format)
-      2. Extract DESCRIPTION (exact text)
-      3. Extract AMOUNT (with $ symbol)
-      4. Add to output with " | " separator
+      2. Extract DESCRIPTION (exact text from description column)
+      3. Extract AMOUNT (with $ symbol, from debit/withdrawal column)
+      4. Add to output lists with " | " separator
+
+      ⚠️ DOUBLE-CHECK: Count your extracted transactions
+      - Only DEBIT/WITHDRAWAL transactions should be in your output
+      - Verify each transaction caused balance to DECREASE
+      - Verify NO salary/deposit/credit transactions are included
 
       OUTPUT FORMAT:
       DOCUMENT_TYPE: BANK_STATEMENT
-      STATEMENT_DATE_RANGE: [statement period or NOT_FOUND]
+      STATEMENT_DATE_RANGE: [earliest transaction date to latest transaction date]
       LINE_ITEM_DESCRIPTIONS: [debit_description1 | debit_description2 | etc.]
       TRANSACTION_DATES: [DD/MM/YYYY | DD/MM/YYYY | etc.]
-      TRANSACTION_AMOUNTS_PAID: [debit1 | debit2 | etc.]
+      TRANSACTION_AMOUNTS_PAID: [$amount1 | $amount2 | etc.]
 
   # InternVL3 models - concise direct approach
   internvl3:
@@ -313,8 +391,30 @@ model_specific_document_instructions:
     bank_statement: |
       Extract structured data from this bank statement for taxpayer expense claims.
 
-      CRITICAL: Extract ONLY DEBIT/WITHDRAWAL transactions (money OUT).
-      IGNORE deposits and credits (money IN).
+      ⚠️ CRITICAL: Extract ONLY DEBIT/WITHDRAWAL transactions (money OUT).
+      IGNORE ALL deposits and credits (money IN).
+
+      DEBIT/WITHDRAWAL (Extract):
+      - Shows in "Debit" or "Withdrawal" column
+      - OR has negative sign: "-$100.00" or "-100.00"
+      - Balance DECREASES
+      - Examples: ATM withdrawal, EFTPOS purchase, online payment, fees
+      - Keywords: withdrawal, purchase, payment, ATM, EFTPOS, fee, debit
+
+      CREDIT/DEPOSIT (Skip):
+      - Shows in "Credit" or "Deposit" column
+      - OR has positive sign: "+$500.00" or no sign
+      - Balance INCREASES
+      - Examples: Salary, deposits, interest
+      - Keywords: salary, deposit, credit, interest, transfer in, refund
+
+      Identify debits by:
+      1. For 5-column: Debit column has AMOUNT (not empty, not just "-" dash)
+      2. For 3-4 column: Amount has "-" prefix/negative number
+      3. Balance DECREASED from previous row
+      4. Description keywords (purchase, withdrawal, ATM, EFTPOS, payment, fee)
+
+      CRITICAL: If Debit column is EMPTY (blank/space) or shows only "-" (dash), that's a CREDIT transaction - SKIP IT!
 
       Output format (5 FIELDS):
 
@@ -325,10 +425,11 @@ model_specific_document_instructions:
       TRANSACTION_AMOUNTS_PAID: NOT_FOUND
 
       Instructions:
-      - Statement period: Date range like "01/01/2025 to 31/01/2025"
+      - Statement period: Earliest to latest transaction date (DD/MM/YYYY to DD/MM/YYYY)
       - Transaction descriptions: DEBIT descriptions only, " | " separator
       - Transaction dates: DEBIT dates only, DD/MM/YYYY, " | " separator
       - Amounts paid: Debit amounts with $, " | " separator (money OUT only)
+      - VERIFY: No salary/deposit/credit transactions in output
       - Use NOT_FOUND for missing fields
 
 # Use model-specific instructions when appropriate (set by model_name parameter)
