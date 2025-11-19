@@ -142,18 +142,22 @@ class BankStatementClassifier:
         effective_model = model_name or self.model_name
         classification_prompt = self._get_classification_prompt(effective_model)
 
-        # Build messages for vision LLM
-        messages = self._build_classification_messages(
-            classification_prompt,
-            image_path,
-            image_url
-        )
-
-        # Invoke LLM
-        response = self.llm.invoke(messages)
+        # Use invoke_with_image for proper image handling
+        if image_path:
+            response_text = self.llm.invoke_with_image(
+                prompt=classification_prompt,
+                image_path=str(image_path)
+            )
+        elif image_url:
+            response_text = self.llm.invoke_with_image(
+                prompt=classification_prompt,
+                image_path=image_url
+            )
+        else:
+            raise ValueError("Must provide either image_path or image_url")
 
         # Parse response
-        result = self._parse_classification_result(response.content)
+        result = self._parse_classification_result(response_text)
 
         return result
 
