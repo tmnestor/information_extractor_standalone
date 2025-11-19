@@ -112,13 +112,15 @@ table_extraction_template: |
 
   ⚠️ RULE 3: Each transaction is EITHER withdrawal OR deposit (not both)
   - Look at the image carefully - find which column has the amount
-  - If Withdrawal column (in image) has an amount → extract it, put "NOT_FOUND" in Deposit
-  - If Deposit column (in image) has an amount → extract it, put "NOT_FOUND" in Withdrawal
-  - If column is blank/empty in image → use "NOT_FOUND" (don't copy from Balance!)
+  - If Withdrawal column (in image) has an amount → extract it, put the text "NOT_FOUND" in Deposit
+  - If Deposit column (in image) has an amount → extract it, put the text "NOT_FOUND" in Withdrawal
+  - If column is blank/empty in image → write the text "NOT_FOUND" (don't copy from Balance!)
+  - "NOT_FOUND" is a literal text string - write these exact 9 characters, NOT an empty/blank cell!
 
-  ⚠️ RULE 4: If you can't read a value clearly, use "NOT_FOUND"
+  ⚠️ RULE 4: If you can't read a value clearly, write the text "NOT_FOUND"
   - DO NOT guess or copy from other columns
   - DO NOT use the Balance value for Withdrawal or Deposit
+  - DO NOT leave cells empty/blank - always write "NOT_FOUND" for missing values
   - Better to say "NOT_FOUND" than to copy the wrong value
 
   ⚠️ RULE 5: Column position matters - read left to right carefully
@@ -140,6 +142,14 @@ table_extraction_template: |
   | Date | Description | Withdrawal | Deposit | Balance |
   |------|-------------|------------|---------|---------|
   | ...  | ...         | ...        | ...     | ...     |
+
+  IMPORTANT: For missing/empty values, use the literal text "NOT_FOUND" (9 characters):
+  ✅ CORRECT examples:
+  | 07/09/2025 | EFTPOS Cash Out | $322.18 | NOT_FOUND | $48890.58 |  ← Withdrawal transaction
+  | 02/09/2025 | Salary Payment | NOT_FOUND | $8105.71 | $51511.48 |  ← Deposit transaction
+
+  ❌ WRONG - DO NOT use empty cells:
+  | 02/09/2025 | Salary Payment |  | $8105.71 | $51511.48 |  ← NO! Write "NOT_FOUND" instead of blank!
 
   Extract ALL rows - do not filter or skip any transactions.
 
@@ -173,13 +183,15 @@ structure_detection_template: |
 
   ⚠️ RULE 3: Each transaction is EITHER withdrawal OR deposit (not both)
   - Look at the image carefully - find which column has the amount
-  - If Withdrawal column (in image) has an amount → extract it, put "NOT_FOUND" in Deposit
-  - If Deposit column (in image) has an amount → extract it, put "NOT_FOUND" in Withdrawal
-  - If column is blank/empty in image → use "NOT_FOUND" (don't copy from Balance!)
+  - If Withdrawal column (in image) has an amount → extract it, put the text "NOT_FOUND" in Deposit
+  - If Deposit column (in image) has an amount → extract it, put the text "NOT_FOUND" in Withdrawal
+  - If column is blank/empty in image → write the text "NOT_FOUND" (don't copy from Balance!)
+  - "NOT_FOUND" is a literal text string - write these exact 9 characters, NOT an empty/blank cell!
 
-  ⚠️ RULE 4: If you can't read a value clearly, use "NOT_FOUND"
+  ⚠️ RULE 4: If you can't read a value clearly, write the text "NOT_FOUND"
   - DO NOT guess or copy from other columns
   - DO NOT use the Balance value for Withdrawal or Deposit
+  - DO NOT leave cells empty/blank - always write "NOT_FOUND" for missing values
   - Better to say "NOT_FOUND" than to copy the wrong value
 
   ⚠️ RULE 5: Column position matters - read left to right carefully
@@ -235,6 +247,14 @@ structure_detection_template: |
   | value1  | value2  | value3  | ... |
   | value1  | value2  | value3  | ... |
   ...
+
+  IMPORTANT: For missing/empty values, use the literal text "NOT_FOUND" (9 characters):
+  ✅ CORRECT examples:
+  | 07/09/2025 | EFTPOS Cash Out | $322.18 | NOT_FOUND | $48890.58 |  ← Withdrawal transaction
+  | 02/09/2025 | Salary Payment | NOT_FOUND | $8105.71 | $51511.48 |  ← Deposit transaction
+
+  ❌ WRONG - DO NOT use empty cells:
+  | 02/09/2025 | Salary Payment |  | $8105.71 | $51511.48 |  ← NO! Write "NOT_FOUND" instead of blank!
 
   Extract ALL rows - do not filter or skip any transactions.
 
@@ -341,22 +361,32 @@ turn1_3column_template: |
 turn2_filter_debits_template: |
   I previously created a 3-column markdown table with columns: {date_column}, {description_column}, {debit_column}.
 
-  Now, remove rows where the "{debit_column}" column contains the text "NOT_FOUND".
+  Now, remove rows where the "{debit_column}" column is missing or empty.
   Keep ONLY rows where the "{debit_column}" column has a dollar amount.
 
   CRITICAL RULES:
   - Remove ANY row where "{debit_column}" = "NOT_FOUND" (these are deposits/credits)
+  - Remove ANY row where "{debit_column}" is blank/empty (these are also deposits/credits)
   - Keep ONLY rows where "{debit_column}" has a dollar amount like $123.45 (these are withdrawals/debits)
-  - "NOT_FOUND" is a literal text string, not empty/blank - look for this exact text
-  - Do NOT modify any column values or headers
+  - "NOT_FOUND" is a literal text string - if you see this, remove that row
+  - Empty cells (|  |) also mean no withdrawal - remove those rows too
+  - Do NOT modify any column values or headers for the rows you keep
   - Do NOT change dollar amounts or descriptions
   - Maintain the same row order for kept rows
-  - Output ONLY the filtered rows, do not include rows with "NOT_FOUND"
+  - Output ONLY the filtered rows with actual dollar amounts
 
-  Output the filtered markdown table (withdrawals only - no "NOT_FOUND" rows):
+  Examples of rows to REMOVE (deposits/credits):
+  | 02/09/2025 | Salary Payment ATO | NOT_FOUND |  ← Remove (has "NOT_FOUND")
+  | 01/09/2025 | DIRECT CREDIT SALARY |  |  ← Remove (empty cell)
+
+  Examples of rows to KEEP (withdrawals/debits):
+  | 07/09/2025 | EFTPOS Cash Out | $322.18 |  ← Keep (has dollar amount)
+  | 04/09/2025 | Mortgage Repayment | $649.79 |  ← Keep (has dollar amount)
+
+  Output the filtered markdown table (withdrawals only - rows with dollar amounts):
   | {date_column} | {description_column} | {debit_column} |
   |---------------|----------------------|----------------|
-  | ...only rows where {debit_column} has dollar amounts (NOT "NOT_FOUND")... |
+  | ...only rows where {debit_column} has dollar amounts (NOT "NOT_FOUND" or empty)... |
 
 # Field format guidelines
 field_format_guidelines:

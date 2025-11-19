@@ -174,7 +174,7 @@ class MultiTurnExtractorV2:
 
         # Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
         console.print("\n[cyan]Turn 2:[/cyan] Filtering to withdrawals only...")
-        console.print(f"  Removing rows where '{structure.debit_column}' is \"NOT_FOUND\"...")
+        console.print(f"  Removing rows where '{structure.debit_column}' is \"NOT_FOUND\" or empty...")
         console.print("  [dim]Using Turn 0 and Turn 1 responses for conversation context...[/dim]")
 
         markdown_table = self._turn2_filter_debits(
