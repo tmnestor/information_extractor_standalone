@@ -307,6 +307,12 @@ class MultiTurnExtractorV2:
         # Get response
         response = self.llm.invoke([message])
 
+        # DEBUG: Show raw Turn 0 response
+        console.print("\n[yellow]DEBUG - Turn 0 Raw Response:[/yellow]")
+        console.print("[dim]" + "=" * 80 + "[/dim]")
+        console.print(response.content[:1000])  # First 1000 chars
+        console.print("[dim]" + "=" * 80 + "[/dim]\n")
+
         # Parse response
         structure = self._parse_structure_response(response.content)
 
@@ -505,7 +511,7 @@ class MultiTurnExtractorV2:
         turn0_prompt = self.config.get_prompt_template("structure_detection_template")
 
         messages = [
-            # Turn 0: Structure detection
+            # Turn 0: Structure detection (image included here)
             HumanMessage(
                 content=[
                     {"type": "image_url", "image_url": {"url": str(image_path)}},
@@ -513,10 +519,9 @@ class MultiTurnExtractorV2:
                 ]
             ),
             AIMessage(content=turn0_response),
-            # Turn 1: 3-column extraction
+            # Turn 1: 3-column extraction (NO image - model remembers from Turn 0)
             HumanMessage(
                 content=[
-                    {"type": "image_url", "image_url": {"url": str(image_path)}},
                     {"type": "text", "text": turn1_prompt},
                 ]
             ),
@@ -583,7 +588,7 @@ class MultiTurnExtractorV2:
         )
 
         messages = [
-            # Turn 0: Structure detection
+            # Turn 0: Structure detection (image included here)
             HumanMessage(
                 content=[
                     {"type": "image_url", "image_url": {"url": str(image_path)}},
@@ -591,18 +596,16 @@ class MultiTurnExtractorV2:
                 ]
             ),
             AIMessage(content=turn0_response),
-            # Turn 1: 3-column extraction
+            # Turn 1: 3-column extraction (NO image - model remembers from Turn 0)
             HumanMessage(
                 content=[
-                    {"type": "image_url", "image_url": {"url": str(image_path)}},
                     {"type": "text", "text": turn1_prompt},
                 ]
             ),
             AIMessage(content=turn1_response),
-            # Turn 2: Filter to withdrawals
+            # Turn 2: Filter to withdrawals (NO image - model remembers from Turn 0)
             HumanMessage(
                 content=[
-                    {"type": "image_url", "image_url": {"url": str(image_path)}},
                     {"type": "text", "text": turn2_prompt},
                 ]
             ),
