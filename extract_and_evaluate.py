@@ -84,7 +84,7 @@ def detect_document_type(image_path: Path, llm) -> str:
     import yaml
 
     # Load detection prompts
-    detection_yaml = Path(__file__).parent / "config" / "document_type_detection.yaml"
+    detection_yaml = Path(__file__).parent / "config" / "prompts" / "lmm_poc" / "document_type_detection.yaml"
     with detection_yaml.open('r') as f:
         detection_config = yaml.safe_load(f)
 
@@ -117,15 +117,9 @@ def display_extraction_prompt(prompt_text: str, prompt_type: str = "Extraction")
         prompt_text: The actual prompt text being sent to the model
         prompt_type: Type of prompt (e.g., "Extraction", "Detection", "Classification")
     """
-    # Truncate very long prompts for display
-    max_display_length = 2000
-    display_text = prompt_text if len(prompt_text) <= max_display_length else (
-        prompt_text[:max_display_length] + f"\n\n... (truncated, total length: {len(prompt_text)} chars)"
-    )
-
     console.print(Panel(
-        display_text,
-        title=f"[bold yellow]{prompt_type} Prompt[/bold yellow]",
+        prompt_text,
+        title=f"[bold yellow]{prompt_type} Prompt[/bold yellow] ({len(prompt_text)} chars)",
         border_style="yellow",
         expand=False,
     ))

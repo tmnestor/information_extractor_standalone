@@ -203,7 +203,7 @@ prompts:
       PAYER_NAME: [Customer name or NOT_FOUND]
       PAYER_ADDRESS: [Customer address or NOT_FOUND]
       INVOICE_DATE: [Date DD/MM/YYYY or NOT_FOUND]
-      STATEMENT_DATE_RANGE: [Date range for statements or NOT_FOUND]
+      STATEMENT_DATE_RANGE: [Earliest to latest transaction date: DD/MM/YYYY to DD/MM/YYYY or NOT_FOUND]
       LINE_ITEM_DESCRIPTIONS: [Items with " | " separator or NOT_FOUND]
       LINE_ITEM_QUANTITIES: [Quantities with " | " or NOT_FOUND]
       LINE_ITEM_PRICES: [Unit prices with $ and " | " or NOT_FOUND]

@@ -32,7 +32,7 @@ prompts:
 
       FIELD DEFINITIONS:
 
-      DOCUMENT_TYPE: Type of document (INVOICE/RECEIPT/STATEMENT) - return "NOT_FOUND" if unclear
+      DOCUMENT_TYPE: Type of document (INVOICE/RECEIPT/BANK_STATEMENT) - return "NOT_FOUND" if unclear
 
       BUSINESS_ABN: 11-digit Australian Business Number (format: XX XXX XXX XXX) - return "NOT_FOUND" if not visible
 
@@ -68,11 +68,11 @@ prompts:
 
       TRANSACTION_AMOUNTS_PAID: DEBIT amounts from BANK STATEMENTS ONLY (separate with " | ", include $ symbol) - return "NOT_FOUND" if not a bank statement. FOR BANK STATEMENTS (TAXPAYER EXPENSE CLAIMS): STEP 1: Identify DEBIT/WITHDRAWAL rows (money OUT) by checking debit column, negative amounts, or balance decreases. STEP 2: Extract amounts from DEBIT rows only with $ symbol. STEP 3: SKIP credit/deposit amounts entirely. CRITICAL: Extract only debits for expense tracking. Must match TRANSACTION_DATES in same order.
 
-      STATEMENT_DATE_RANGE: Date range for BANK STATEMENTS ONLY - extract the earliest and latest dates from TRANSACTION_DATES (format: DD/MM/YYYY to DD/MM/YYYY) - return "NOT_FOUND" if not a bank statement
+      STATEMENT_DATE_RANGE: Date range from earliest transaction date to latest transaction date (for BANK STATEMENTS ONLY) - calculate from the TRANSACTION_DATES field (format: DD/MM/YYYY to DD/MM/YYYY) - return "NOT_FOUND" if not a bank statement
 
       OUTPUT EXACTLY IN THIS FORMAT (replace [values] with actual extracted data):
 
-      DOCUMENT_TYPE: [INVOICE/RECEIPT/STATEMENT or NOT_FOUND]
+      DOCUMENT_TYPE: [INVOICE/RECEIPT/BANK_STATEMENT or NOT_FOUND]
       BUSINESS_ABN: [11-digit ABN or NOT_FOUND]
       SUPPLIER_NAME: [company name or NOT_FOUND]
       BUSINESS_ADDRESS: [address or NOT_FOUND]

@@ -78,14 +78,14 @@ document_fields:
 # FIELD DESCRIPTIONS - Documentation for each field
 # ============================================================================
 field_descriptions:
-  DOCUMENT_TYPE: "Type of document (INVOICE/RECEIPT/STATEMENT)"
+  DOCUMENT_TYPE: "Type of document (INVOICE/RECEIPT/BANK_STATEMENT)"
   BUSINESS_ABN: "11-digit Australian Business Number"
   SUPPLIER_NAME: "Business/company name providing goods/services"
   BUSINESS_ADDRESS: "Complete supplier business address"
   PAYER_NAME: "Customer/payer name"
   PAYER_ADDRESS: "Customer/payer address"
   INVOICE_DATE: "Invoice/receipt date (DD/MM/YYYY format)"
-  STATEMENT_DATE_RANGE: "Bank statement period (DD/MM/YYYY - DD/MM/YYYY)"
+  STATEMENT_DATE_RANGE: "Date range from earliest transaction date to latest transaction date (format: DD/MM/YYYY to DD/MM/YYYY)"
   LINE_ITEM_DESCRIPTIONS: "Product/service names or transaction descriptions"
   LINE_ITEM_QUANTITIES: "Quantities for each line item"
   LINE_ITEM_PRICES: "Unit price per item"

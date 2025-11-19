@@ -267,14 +267,14 @@ prompts:
       • BANK STATEMENT fields: Statement period, transactions, balances
       • If field doesn't apply to document type, return "NOT_FOUND"
 
-      DOCUMENT_TYPE: [INVOICE/RECEIPT/STATEMENT or NOT_FOUND]
+      DOCUMENT_TYPE: [INVOICE/RECEIPT/BANK_STATEMENT or NOT_FOUND]
       BUSINESS_ABN: [11-digit Australian Business Number or NOT_FOUND]
       SUPPLIER_NAME: [Company/business name or NOT_FOUND]
       BUSINESS_ADDRESS: [Complete supplier address or NOT_FOUND]
       PAYER_NAME: [Customer/payer name or NOT_FOUND]
       PAYER_ADDRESS: [Customer/payer address or NOT_FOUND]
       INVOICE_DATE: [Date in DD/MM/YYYY format or NOT_FOUND]
-      STATEMENT_DATE_RANGE: [Date range for bank statements or NOT_FOUND]
+      STATEMENT_DATE_RANGE: [Earliest to latest transaction date: DD/MM/YYYY to DD/MM/YYYY or NOT_FOUND]
       LINE_ITEM_DESCRIPTIONS: [Items/transactions separated by " | " or NOT_FOUND]
       LINE_ITEM_QUANTITIES: [Quantities separated by " | " or NOT_FOUND]
       LINE_ITEM_PRICES: [Unit prices with $ separated by " | " or NOT_FOUND]
