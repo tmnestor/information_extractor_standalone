@@ -354,6 +354,10 @@ class MultiTurnExtractorV2:
         """
         lines = response_text.strip().split("\n")
 
+        console.print(f"\n[yellow]DEBUG - Parser received {len(lines)} lines:[/yellow]")
+        for i, line in enumerate(lines):
+            console.print(f"  Line {i}: '{line}'")
+
         structure_type = "flat"
         column_headers = []
         estimated_rows = 0
@@ -371,14 +375,17 @@ class MultiTurnExtractorV2:
 
             # Column Headers (markdown bullet format)
             elif "column headers:" in line_lower or line.startswith("COLUMN_HEADERS:"):
+                console.print(f"[yellow]  → Matched COLUMN_HEADERS line: '{line}'[/yellow]")
                 # Check if pipe-separated format on same line
                 if "|" in line:
                     headers_str = line.split(":", 1)[1].strip()
                     # Strip markdown asterisks from each header
                     column_headers = [h.strip().replace("*", "") for h in headers_str.split("|")]
+                    console.print(f"[yellow]  → Parsed headers: {column_headers}[/yellow]")
                 else:
                     # Markdown bullet format follows on next lines
                     in_headers_section = True
+                    console.print("[yellow]  → Entering bullet format mode[/yellow]")
                 continue
 
             # Parse bullet point headers
