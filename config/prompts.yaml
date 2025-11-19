@@ -225,11 +225,10 @@ model_specific_document_instructions:
 
       bank_statement: |
         ═══════════════════════════════════════════════════════════════════════════
-        ⚠️⚠️⚠️ CRITICAL RULE - READ THIS FIRST ⚠️⚠️⚠️
+        ⚠️⚠️⚠️ CRITICAL RULES - READ THESE FIRST ⚠️⚠️⚠️
         ═══════════════════════════════════════════════════════════════════════════
 
-        For 5-column bank statements (Date | Description | Withdrawal | Deposit | Balance):
-
+        RULE 1: For 5-column statements (Date | Description | Withdrawal | Deposit | Balance):
         ✅ EXTRACT THIS ROW if: Withdrawal column HAS A DOLLAR AMOUNT ($100.00)
         ❌ SKIP THIS ROW if: Withdrawal column is BLANK/EMPTY (even if Deposit has value)
 
@@ -241,6 +240,15 @@ model_specific_document_instructions:
         - INTEREST PAYMENT
         - TAX REFUND
         - Any row where Withdrawal is blank/empty/dash
+
+        RULE 2: EXTRACT EVERY ROW SEPARATELY - DO NOT DE-DUPLICATE!
+        ✅ If you see "EFTPOS PURCHASE" on 3 different dates → Extract ALL 3 rows
+        ✅ If you see "ATM WITHDRAWAL" on 2 different dates → Extract BOTH rows
+        ✅ IDENTICAL descriptions are NORMAL - extract each occurrence separately
+        ❌ DO NOT combine or skip duplicate descriptions
+        ❌ DO NOT assume repeated descriptions are errors
+
+        Each row = separate transaction, even if description matches another row!
 
         ═══════════════════════════════════════════════════════════════════════════
 
@@ -254,7 +262,7 @@ model_specific_document_instructions:
         Note: "Withdrawal" = "Debit" (both mean money OUT)
         Note: "Deposit" = "Credit" (both mean money IN)
 
-        ### STEP 2 - Go through each row and apply THE CRITICAL RULE
+        ### STEP 2 - Go through each row and apply THE CRITICAL RULES
 
         For EACH transaction row, look at the Withdrawal/Debit column:
 
@@ -266,14 +274,23 @@ model_specific_document_instructions:
         04/05 | EFTPOS PURCHASE      | $22.50    |          | $13,364.94
         ✅ EXTRACT: Withdrawal=$22.50 (column has amount)
 
-        05/05 | DIRECT CREDIT SALARY |           | $3497.47 | $16,862.41
+        05/05 | EFTPOS PURCHASE      | $114.66   |          | $13,250.28
+        ✅ EXTRACT: Withdrawal=$114.66 (SAME description as row 4, but DIFFERENT row!)
+
+        06/05 | DIRECT CREDIT SALARY |           | $3497.47 | $16,747.75
         ❌ SKIP: Withdrawal=BLANK (this is money IN, not OUT)
 
-        07/05 | ATM WITHDRAWAL       | $187.59   |          | $16,674.82
+        07/05 | ATM WITHDRAWAL       | $187.59   |          | $16,560.16
         ✅ EXTRACT: Withdrawal=$187.59 (column has amount)
 
-        09/05 | INTEREST PAYMENT     |           | $5.16    | $16,679.98
+        08/05 | EFTPOS PURCHASE      | $112.50   |          | $16,447.66
+        ✅ EXTRACT: Withdrawal=$112.50 (SAME description again, still extract!)
+
+        09/05 | INTEREST PAYMENT     |           | $5.16    | $16,452.82
         ❌ SKIP: Withdrawal=BLANK (this is money IN, not OUT)
+
+        10/05 | ATM WITHDRAWAL       | $146.72   |          | $16,306.10
+        ✅ EXTRACT: Withdrawal=$146.72 (SAME description as row 7, still extract!)
 
         ### STEP 3 - Extract only the ✅ rows
 
@@ -290,6 +307,7 @@ model_specific_document_instructions:
         □ Did I SKIP all rows where Withdrawal column is blank?
         □ Did I include ONLY rows where Withdrawal column has a $ amount?
         □ Are DIRECT CREDIT SALARY and INTEREST PAYMENT excluded?
+        □ Did I extract ALL rows with amounts, even if descriptions repeat?
         □ Do my 3 lists have the SAME NUMBER of items?
 
         ### OUTPUT FORMAT:
