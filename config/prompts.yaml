@@ -228,27 +228,48 @@ model_specific_document_instructions:
         ⚠️⚠️⚠️ CRITICAL RULES - READ THESE FIRST ⚠️⚠️⚠️
         ═══════════════════════════════════════════════════════════════════════════
 
-        RULE 1: For 5-column statements (Date | Description | Withdrawal | Deposit | Balance):
-        ✅ EXTRACT THIS ROW if: Withdrawal column HAS A DOLLAR AMOUNT ($100.00)
-        ❌ SKIP THIS ROW if: Withdrawal column is BLANK/EMPTY (even if Deposit has value)
+        RULE 1: ONLY EXTRACT ROWS WHERE WITHDRAWAL COLUMN HAS A DOLLAR AMOUNT
 
-        BLANK Withdrawal column = CREDIT/DEPOSIT = Money IN = DO NOT EXTRACT!
+        For 5-column statements: Date | Description | Withdrawal | Deposit | Balance
 
-        Examples of rows to SKIP (Withdrawal column blank):
-        - DIRECT CREDIT SALARY
-        - PAYROLL DEPOSIT
-        - INTEREST PAYMENT
-        - TAX REFUND
-        - Any row where Withdrawal is blank/empty/dash
+        ✅ Withdrawal column has amount → EXTRACT this row (date, description, amount)
+        ❌ Withdrawal column is EMPTY/BLANK → SKIP this row COMPLETELY
 
-        RULE 2: EXTRACT EVERY ROW SEPARATELY - DO NOT DE-DUPLICATE!
-        ✅ If you see "EFTPOS PURCHASE" on 3 different dates → Extract ALL 3 rows
-        ✅ If you see "ATM WITHDRAWAL" on 2 different dates → Extract BOTH rows
-        ✅ IDENTICAL descriptions are NORMAL - extract each occurrence separately
-        ❌ DO NOT combine or skip duplicate descriptions
-        ❌ DO NOT assume repeated descriptions are errors
+        Visual guide (look at the Withdrawal column):
 
-        Each row = separate transaction, even if description matches another row!
+        Date | Description    | Withdrawal | Deposit | Balance
+        ──────────────────────────────────────────────────────────
+        XX   | PURCHASE       | $50.00     |         | $XXX   ← HAS AMOUNT = EXTRACT
+        XX   | SALARY         |            | $2000   | $XXX   ← BLANK = SKIP ENTIRELY
+        XX   | PURCHASE       | $30.00     |         | $XXX   ← HAS AMOUNT = EXTRACT
+        XX   | INTEREST       |            | $10     | $XXX   ← BLANK = SKIP ENTIRELY
+
+        ⚠️ CRITICAL: If Withdrawal is blank, DO NOT extract date, description, OR amount!
+
+        BLANK Withdrawal = CREDIT/DEPOSIT = Money IN = SKIP THE ENTIRE ROW!
+
+        Common credit transactions to SKIP (Withdrawal always blank):
+        - DIRECT CREDIT SALARY (Withdrawal blank)
+        - PAYROLL DEPOSIT (Withdrawal blank)
+        - INTEREST PAYMENT (Withdrawal blank)
+        - TAX REFUND (Withdrawal blank)
+        - Any description where Withdrawal column is empty/blank
+
+        RULE 2: NEVER READ AMOUNTS FROM THE DEPOSIT COLUMN
+
+        ❌ DO NOT extract amounts from the Deposit column (money IN)
+        ✅ ONLY extract amounts from the Withdrawal column (money OUT)
+
+        If Withdrawal is blank but Deposit has $500 → DO NOT extract $500!
+
+        RULE 3: EXTRACT EVERY ROW SEPARATELY - DO NOT DE-DUPLICATE
+
+        ✅ Same description on 3 different dates? → Extract ALL 3 rows separately
+        ✅ Same description with different amounts? → Extract ALL occurrences
+        ❌ DO NOT combine rows with identical descriptions
+        ❌ DO NOT skip duplicate descriptions
+
+        Each row = separate transaction!
 
         ═══════════════════════════════════════════════════════════════════════════
 
@@ -262,35 +283,50 @@ model_specific_document_instructions:
         Note: "Withdrawal" = "Debit" (both mean money OUT)
         Note: "Deposit" = "Credit" (both mean money IN)
 
-        ### STEP 2 - Go through each row and apply THE CRITICAL RULES
+        ### STEP 2 - Apply the ONE-COLUMN CHECK to each row
 
-        For EACH transaction row, look at the Withdrawal/Debit column:
+        Go through each row and CHECK ONLY THE WITHDRAWAL COLUMN:
 
-        Row 1: Date | Description | Withdrawal | Deposit | Balance
-        ───────────────────────────────────────────────────────────────────────
-        11/01 | SUPERMARKET          | $45.20    |          | $2,154.80
-        ✅ EXTRACT: Withdrawal=$45.20 (column has amount)
+        Decision tree for EACH row:
+        1. Look at Withdrawal column
+        2. Does it have a $ amount? YES → Extract this row | NO → Skip this row
 
-        12/01 | FUEL STATION         | $67.30    |          | $2,087.50
-        ✅ EXTRACT: Withdrawal=$67.30 (column has amount)
+        Date | Description     | Withdrawal | Deposit  | Balance
+        ────────────────────────────────────────────────────────────────
+        11/01| SUPERMARKET     | $45.20     | [empty]  | $2,154.80
+        ✅ EXTRACT Row 1: Withdrawal HAS amount ($45.20)
+           → Add: 11/01/2024 | SUPERMARKET | $45.20
 
-        13/01 | FUEL STATION         | $72.85    |          | $2,014.65
-        ✅ EXTRACT: Withdrawal=$72.85 (SAME description as previous, but DIFFERENT row!)
+        12/01| FUEL STATION    | $67.30     | [empty]  | $2,087.50
+        ✅ EXTRACT Row 2: Withdrawal HAS amount ($67.30)
+           → Add: 12/01/2024 | FUEL STATION | $67.30
 
-        14/01 | PAYROLL DEPOSIT      |           | $2,800.00| $4,814.65
-        ❌ SKIP: Withdrawal=BLANK (this is money IN, not OUT)
+        13/01| FUEL STATION    | $72.85     | [empty]  | $2,014.65
+        ✅ EXTRACT Row 3: Withdrawal HAS amount ($72.85) - duplicate description OK!
+           → Add: 13/01/2024 | FUEL STATION | $72.85
 
-        15/01 | PHARMACY             | $24.80    |          | $4,789.85
-        ✅ EXTRACT: Withdrawal=$24.80 (column has amount)
+        14/01| PAYROLL DEPOSIT | [EMPTY]    | $2,800.00| $4,814.65
+        ❌ SKIP Row 4: Withdrawal is BLANK (ignore $2,800 in Deposit!)
+           → Add: NOTHING to any list
 
-        16/01 | SUPERMARKET          | $89.15    |          | $4,700.70
-        ✅ EXTRACT: Withdrawal=$89.15 (SAME description again, still extract!)
+        15/01| PHARMACY        | $24.80     | [empty]  | $4,789.85
+        ✅ EXTRACT Row 5: Withdrawal HAS amount ($24.80)
+           → Add: 15/01/2024 | PHARMACY | $24.80
 
-        17/01 | INTEREST CREDIT      |           | $12.35   | $4,713.05
-        ❌ SKIP: Withdrawal=BLANK (this is money IN, not OUT)
+        16/01| SUPERMARKET     | $89.15     | [empty]  | $4,700.70
+        ✅ EXTRACT Row 6: Withdrawal HAS amount ($89.15) - duplicate description OK!
+           → Add: 16/01/2024 | SUPERMARKET | $89.15
 
-        18/01 | RESTAURANT           | $56.40    |          | $4,656.65
-        ✅ EXTRACT: Withdrawal=$56.40 (column has amount)
+        17/01| INTEREST CREDIT | [EMPTY]    | $12.35   | $4,713.05
+        ❌ SKIP Row 7: Withdrawal is BLANK (ignore $12.35 in Deposit!)
+           → Add: NOTHING to any list
+
+        18/01| RESTAURANT      | $56.40     | [empty]  | $4,656.65
+        ✅ EXTRACT Row 8: Withdrawal HAS amount ($56.40)
+           → Add: 18/01/2024 | RESTAURANT | $56.40
+
+        Rows to extract: 1, 2, 3, 5, 6, 8 (total: 6 rows)
+        Rows to skip: 4, 7 (Withdrawal blank)
 
         ### STEP 3 - Extract data from ✅ rows ONLY (keep lists synchronized!)
 
@@ -320,18 +356,31 @@ model_specific_document_instructions:
 
         Use " | " separator between items in each list.
 
-        ### STEP 4 - Before you output, VERIFY ALL CHECKS:
+        ### STEP 4 - MANDATORY VERIFICATION (check before output):
 
+        Count verification:
+        □ Count rows with Withdrawal amounts in image: ___ rows
+        □ Count items in TRANSACTION_DATES: ___ items
+        □ Count items in LINE_ITEM_DESCRIPTIONS: ___ items
+        □ Count items in TRANSACTION_AMOUNTS_PAID: ___ items
+        □ Are all 3 counts IDENTICAL? (Must be YES!)
+
+        Content verification:
         □ Did I check EVERY row in the table?
-        □ Did I SKIP all rows where Withdrawal column is blank?
+        □ Did I SKIP all rows where Withdrawal column is blank/empty?
         □ Did I include ONLY rows where Withdrawal column has a $ amount?
-        □ Are ALL credit/deposit transactions completely excluded from ALL lists?
+        □ Are ALL amounts extracted from Withdrawal column (NOT Deposit)?
         □ Did I extract ALL rows with amounts, even if descriptions repeat?
-        □ Do my 3 lists have the SAME NUMBER of items?
-        □ Are dates for blank-Withdrawal rows EXCLUDED from TRANSACTION_DATES?
-        □ Are descriptions from blank-Withdrawal rows EXCLUDED from LINE_ITEM_DESCRIPTIONS?
+        □ Is EVERY date associated with a row that has a Withdrawal amount?
+        □ Is EVERY description associated with a row that has a Withdrawal amount?
 
-        If you extracted ANY row with blank Withdrawal in ANY field → ERROR, remove it!
+        ⚠️ COMMON ERRORS TO CHECK:
+        □ Did I accidentally extract amounts from Deposit column? → Remove them!
+        □ Did I include dates from rows with blank Withdrawal? → Remove them!
+        □ Did I include descriptions from rows with blank Withdrawal? → Remove them!
+        □ Did I skip any duplicate descriptions? → Add them back!
+
+        If lists have different counts → ERROR, find and fix mismatched extraction!
 
         ### OUTPUT FORMAT:
 
