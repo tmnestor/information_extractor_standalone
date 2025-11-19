@@ -247,24 +247,26 @@ turn1_3column_template: |
   |---------------|----------------------|----------------|
   | ...all rows from original table with exact values... |
 
-# Turn 2: Remove empty debit rows (withdrawals only)
+# Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
 turn2_filter_debits_template: |
   I previously created a 3-column markdown table with columns: {date_column}, {description_column}, {debit_column}.
 
-  Now, remove rows where the "{debit_column}" column is "NOT_FOUND".
-  Keep ONLY rows that have a dollar amount in the "{debit_column}" column.
+  Now, remove rows where the "{debit_column}" column contains the text "NOT_FOUND".
+  Keep ONLY rows where the "{debit_column}" column has a dollar amount.
 
-  RULES:
-  - Remove rows where "{debit_column}" is "NOT_FOUND" (these are deposits/credits)
-  - Keep rows where "{debit_column}" has a dollar amount like $123.45 (these are withdrawals/debits)
-  - Do not modify the column headers or values
+  CRITICAL RULES:
+  - Remove ANY row where "{debit_column}" = "NOT_FOUND" (these are deposits/credits)
+  - Keep ONLY rows where "{debit_column}" has a dollar amount like $123.45 (these are withdrawals/debits)
+  - "NOT_FOUND" is a literal text string, not empty/blank - look for this exact text
+  - Do NOT modify any column values or headers
+  - Do NOT change dollar amounts or descriptions
   - Maintain the same row order for kept rows
-  - Do NOT change "NOT_FOUND" to any other value
+  - Output ONLY the filtered rows, do not include rows with "NOT_FOUND"
 
-  Output the filtered markdown table (withdrawals only):
+  Output the filtered markdown table (withdrawals only - no "NOT_FOUND" rows):
   | {date_column} | {description_column} | {debit_column} |
   |---------------|----------------------|----------------|
-  | ...only rows with debit dollar amounts... |
+  | ...only rows where {debit_column} has dollar amounts (NOT "NOT_FOUND")... |
 
 # Field format guidelines
 field_format_guidelines:

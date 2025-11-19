@@ -166,9 +166,15 @@ class MultiTurnExtractorV2:
             image_path, structure, turn0_response
         )
 
-        # Turn 2: Remove empty debit rows (withdrawals only)
+        # DEBUG: Show Turn 1 response
+        console.print("\n[yellow]DEBUG - Turn 1 Full Response:[/yellow]")
+        console.print("[dim]" + "=" * 80 + "[/dim]")
+        console.print(turn1_table)
+        console.print("[dim]" + "=" * 80 + "[/dim]\n")
+
+        # Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
         console.print("\n[cyan]Turn 2:[/cyan] Filtering to withdrawals only...")
-        console.print(f"  Removing rows where '{structure.debit_column}' is empty...")
+        console.print(f"  Removing rows where '{structure.debit_column}' is \"NOT_FOUND\"...")
         console.print("  [dim]Using Turn 0 and Turn 1 responses for conversation context...[/dim]")
 
         markdown_table = self._turn2_filter_debits(
