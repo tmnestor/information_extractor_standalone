@@ -70,12 +70,11 @@ def load_model(model_name: str = "llama-3.2-11b-vision"):
     console.print("[green]✅ Model loaded successfully[/green]")
 
     # Wrap in VisionLanguageModel for LangChain compatibility
-    is_llama = "llama" in model_name.lower()
     llm = VisionLanguageModel(
         model=model,
         processor=processor,
+        model_id=model_name,  # Pass model_id for auto-detection
         max_new_tokens=2000,
-        is_llama=is_llama,
     )
 
     return llm

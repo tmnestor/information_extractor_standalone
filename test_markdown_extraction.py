@@ -123,8 +123,8 @@ def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-
         temp_llm = VisionLanguageModel(
             model=model,
             processor=processor,
+            model_id=model_name,  # Pass model_id for auto-detection
             max_new_tokens=2000,
-            is_llama=False
         )
 
         # Use InternVL3 preprocessing and generation
