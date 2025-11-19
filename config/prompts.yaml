@@ -86,6 +86,25 @@ extraction_template: |
 
   {extraction_rules}
 
+# Table extraction prompt (for markdown OCR)
+table_extraction_template: |
+  Extract the transaction table from this bank statement image as markdown.
+
+  Look at the bank statement and find the main transaction table.
+  Extract ALL rows from the table exactly as shown, including:
+  - All column headers
+  - All transaction rows (do not skip any rows)
+  - Preserve exact spacing and alignment
+
+  Output ONLY the markdown table, nothing else.
+  Use this markdown table format:
+
+  | Date | Description | Withdrawal | Deposit | Balance |
+  |------|-------------|------------|---------|---------|
+  | ...  | ...         | ...        | ...     | ...     |
+
+  Extract ALL rows - do not filter or skip any transactions.
+
 # Field format guidelines
 field_format_guidelines:
   text: "Plain text exactly as shown"
