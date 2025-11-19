@@ -88,13 +88,29 @@ extraction_template: |
 
 # Table extraction prompt (for markdown OCR)
 table_extraction_template: |
-  Extract the transaction table from this bank statement image as markdown.
+  🚨🚨🚨 CRITICAL WARNING 🚨🚨🚨
 
-  STEP-BY-STEP PROCESS:
-  1. First, locate the column headers and note their POSITIONS (left to right)
-  2. For each row, read values according to those fixed column POSITIONS
-  3. If a position has no value (empty cell), write "NOT_FOUND" for that position
-  4. DO NOT skip empty positions - every row must have the same number of columns
+  YOU ARE MAKING A SYSTEMATIC ERROR: Copying the Balance column into the Deposit column!
+
+  COMMON ERROR YOU MUST AVOID:
+  ❌ WRONG - You keep doing this:
+  | Date | Description | $100.00 | $5000.00 | $5000.00 |
+                                    ↑ Deposit  ↑ Balance
+  Problem: $5000.00 appears in BOTH columns - this means you copied Balance → Deposit!
+
+  ✅ CORRECT - This is what you MUST do instead:
+  | Date | Description | $100.00 | NOT_FOUND | $5000.00 |
+                                    ↑ Write "NOT_FOUND" for empty cells!
+
+  🚨 MANDATORY PRE-EXTRACTION CHECKLIST (complete BEFORE you start):
+  □ Step 1: Look at the column headers and note their FIXED POSITIONS (left to right)
+  □ Step 2: For EACH row, identify which positions have visible amounts and which are EMPTY
+  □ Step 3: For ANY empty position, you will write the exact text "NOT_FOUND"
+  □ Step 4: You will NEVER copy Balance into Withdrawal or Deposit - they are different values!
+  □ Step 5: If Deposit column is empty in the image → write "NOT_FOUND" (not Balance!)
+  □ Step 6: Default assumption: Most rows have ONLY withdrawal OR deposit, so one column will be "NOT_FOUND"
+
+  Extract the transaction table from this bank statement image as markdown.
 
   Look at the bank statement and find the main transaction table.
   Extract ALL rows from the table exactly as shown, including:
@@ -124,11 +140,19 @@ table_extraction_template: |
   - Balance column: Contains running balance after transaction
   - These are THREE DIFFERENT VALUES - never duplicate between columns!
 
-  ⚠️ RULE 4: NEVER duplicate Balance into Withdrawal or Deposit columns!
-  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit copied from Balance!
-  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 |
-  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal copied from Balance!
-  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 |
+  ⚠️ RULE 4: NEVER DUPLICATE BALANCE INTO WITHDRAWAL OR DEPOSIT COLUMNS!
+  🚨 THIS IS YOUR MOST COMMON ERROR - PAY SPECIAL ATTENTION! 🚨
+
+  SELF-CHECK for EVERY row you extract:
+  - After writing Deposit value, compare it to Balance value
+  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to Deposit by mistake!
+  - Fix it: Replace Deposit with "NOT_FOUND"
+
+  Examples of this error (which you keep making):
+  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 | ← Fixed: Deposit is empty in image
+  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 | ← Fixed: Withdrawal is empty in image
 
   ⚠️ RULE 5: Each transaction is EITHER withdrawal OR deposit (not both)
   - Look at the image carefully - find which column has the amount
@@ -156,6 +180,14 @@ table_extraction_template: |
   - Each transaction gets its own row with: unique description, unique amount, unique balance
   - Do NOT combine multiple transactions into a single row
   - Count the number of balances shown = number of rows to create for that date
+
+  🚨 FINAL REMINDER BEFORE YOU START EXTRACTING:
+  - For EACH row you extract, ask yourself: "Is the Deposit column empty in the image?"
+  - If YES (empty in image) → Write "NOT_FOUND" in the Deposit column (DON'T copy Balance!)
+  - If NO (has a value in image) → Extract that value
+  - MOST rows will have either Withdrawal OR Deposit filled, but NOT BOTH
+  - Therefore, MOST rows should have "NOT_FOUND" in either the Withdrawal or Deposit column
+  - If you extract a table where EVERY row has values in both Withdrawal AND Deposit → YOU MADE A MISTAKE!
 
   Output ONLY the markdown table, nothing else.
   Use this markdown table format:
@@ -189,13 +221,29 @@ table_extraction_template: |
 
 # Structure detection - Extract FULL markdown table + metadata
 structure_detection_template: |
-  Extract the transaction table from this bank statement image as markdown.
+  🚨🚨🚨 CRITICAL WARNING 🚨🚨🚨
 
-  STEP-BY-STEP PROCESS:
-  1. First, locate the column headers and note their POSITIONS (left to right)
-  2. For each row, read values according to those fixed column POSITIONS
-  3. If a position has no value (empty cell), write "NOT_FOUND" for that position
-  4. DO NOT skip empty positions - every row must have the same number of columns
+  YOU ARE MAKING A SYSTEMATIC ERROR: Copying the Balance column into the Deposit column!
+
+  COMMON ERROR YOU MUST AVOID:
+  ❌ WRONG - You keep doing this:
+  | Date | Description | $100.00 | $5000.00 | $5000.00 |
+                                    ↑ Deposit  ↑ Balance
+  Problem: $5000.00 appears in BOTH columns - this means you copied Balance → Deposit!
+
+  ✅ CORRECT - This is what you MUST do instead:
+  | Date | Description | $100.00 | NOT_FOUND | $5000.00 |
+                                    ↑ Write "NOT_FOUND" for empty cells!
+
+  🚨 MANDATORY PRE-EXTRACTION CHECKLIST (complete BEFORE you start):
+  □ Step 1: Look at the column headers and note their FIXED POSITIONS (left to right)
+  □ Step 2: For EACH row, identify which positions have visible amounts and which are EMPTY
+  □ Step 3: For ANY empty position, you will write the exact text "NOT_FOUND"
+  □ Step 4: You will NEVER copy Balance into Withdrawal or Deposit - they are different values!
+  □ Step 5: If Deposit column is empty in the image → write "NOT_FOUND" (not Balance!)
+  □ Step 6: Default assumption: Most rows have ONLY withdrawal OR deposit, so one column will be "NOT_FOUND"
+
+  Extract the transaction table from this bank statement image as markdown.
 
   Look at the bank statement and find the main transaction table.
   Extract ALL rows from the table exactly as shown, including:
@@ -225,11 +273,19 @@ structure_detection_template: |
   - Balance column: Contains running balance after transaction
   - These are THREE DIFFERENT VALUES - never duplicate between columns!
 
-  ⚠️ RULE 4: NEVER duplicate Balance into Withdrawal or Deposit columns!
-  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit copied from Balance!
-  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 |
-  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal copied from Balance!
-  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 |
+  ⚠️ RULE 4: NEVER DUPLICATE BALANCE INTO WITHDRAWAL OR DEPOSIT COLUMNS!
+  🚨 THIS IS YOUR MOST COMMON ERROR - PAY SPECIAL ATTENTION! 🚨
+
+  SELF-CHECK for EVERY row you extract:
+  - After writing Deposit value, compare it to Balance value
+  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to Deposit by mistake!
+  - Fix it: Replace Deposit with "NOT_FOUND"
+
+  Examples of this error (which you keep making):
+  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 | ← Fixed: Deposit is empty in image
+  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 | ← Fixed: Withdrawal is empty in image
 
   ⚠️ RULE 5: Each transaction is EITHER withdrawal OR deposit (not both)
   - Look at the image carefully - find which column has the amount
@@ -286,6 +342,14 @@ structure_detection_template: |
   - This equals the number of transaction rows
   - Do NOT count the header row
   - Example: 40 balance entries = 40 transaction rows
+
+  🚨 FINAL REMINDER BEFORE YOU START EXTRACTING:
+  - For EACH row you extract, ask yourself: "Is the Deposit column empty in the image?"
+  - If YES (empty in image) → Write "NOT_FOUND" in the Deposit column (DON'T copy Balance!)
+  - If NO (has a value in image) → Extract that value
+  - MOST rows will have either Withdrawal OR Deposit filled, but NOT BOTH
+  - Therefore, MOST rows should have "NOT_FOUND" in either the Withdrawal or Deposit column
+  - If you extract a table where EVERY row has values in both Withdrawal AND Deposit → YOU MADE A MISTAKE!
 
   Output format:
   STRUCTURE_TYPE: [flat | date_grouped]

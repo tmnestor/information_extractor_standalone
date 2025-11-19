@@ -310,6 +310,12 @@ class MultiTurnExtractorV2:
             ]
         )
 
+        # DEBUG: Show full prompt being sent to model
+        console.print("\n[bold yellow]━━━ TURN 0: FULL PROMPT ━━━[/bold yellow]")
+        console.print("[dim]" + "=" * 80 + "[/dim]")
+        console.print(prompt_template)
+        console.print("[dim]" + "=" * 80 + "[/dim]\n")
+
         # Get response
         response = self.llm.invoke([message])
 
@@ -561,6 +567,12 @@ class MultiTurnExtractorV2:
             ),
         ]
 
+        # DEBUG: Show full Turn 1 prompt
+        console.print("\n[bold yellow]━━━ TURN 1: FULL PROMPT ━━━[/bold yellow]")
+        console.print("[dim]" + "=" * 80 + "[/dim]")
+        console.print(turn1_prompt)
+        console.print("[dim]" + "=" * 80 + "[/dim]\n")
+
         # Get response with conversation context
         response = self.llm.invoke(messages)
 
@@ -644,6 +656,12 @@ class MultiTurnExtractorV2:
                 ]
             ),
         ]
+
+        # DEBUG: Show full Turn 2 prompt
+        console.print("\n[bold yellow]━━━ TURN 2: FULL PROMPT ━━━[/bold yellow]")
+        console.print("[dim]" + "=" * 80 + "[/dim]")
+        console.print(turn2_prompt)
+        console.print("[dim]" + "=" * 80 + "[/dim]\n")
 
         # Get response with full conversation context
         response = self.llm.invoke(messages)
