@@ -224,28 +224,55 @@ date_column_extraction_template: |
   08/09/2025
   ...
 
-# Turn 1: Extract 3 columns (keep ALL rows)
+# Turn 1: Filter to 3 columns (TEXT FILTERING ONLY - DO NOT RE-EXTRACT)
 turn1_3column_template: |
-  I previously extracted a full markdown table from the bank statement.
+  ⚠️ CRITICAL: This is a TEXT FILTERING task, NOT a data extraction task!
 
-  Now, create a new markdown table with ONLY these 3 columns:
-  1. "{date_column}" - Keep this column
-  2. "{description_column}" - Keep this column
-  3. "{debit_column}" - Keep this column (withdrawal/debit amounts)
+  I previously extracted a full markdown table from the bank statement image.
+  That table is in my previous response.
 
-  RULES:
-  - Keep ALL rows (do not remove any rows yet)
-  - Keep ONLY the 3 specified columns (remove all other columns)
-  - Preserve the EXACT values from the original table (do NOT modify any values)
-  - Maintain the same row order
-  - If "{debit_column}" shows "NOT_FOUND" in a row, keep "NOT_FOUND" exactly as is
-  - Do NOT change "NOT_FOUND" to empty string or any other value
-  - Do NOT change dollar amounts or descriptions
+  YOUR TASK: Copy the table from my previous response and remove 2 columns.
+
+  STEP 1: Find the markdown table in my previous response (starts with "MARKDOWN_TABLE:")
+
+  STEP 2: Create a new table with ONLY these 3 columns:
+  - Column 1: "{date_column}"
+  - Column 2: "{description_column}"
+  - Column 3: "{debit_column}"
+
+  STEP 3: For EACH row in the original table:
+  - Copy the value from "{date_column}" column → paste into new table column 1
+  - Copy the value from "{description_column}" column → paste into new table column 2
+  - Copy the value from "{debit_column}" column → paste into new table column 3
+  - Keep the EXACT text character-by-character - do NOT modify anything!
+
+  ❌ FORBIDDEN ACTIONS (DO NOT DO THESE):
+  - Do NOT look at the bank statement image again
+  - Do NOT re-extract data from the image
+  - Do NOT "correct" or "fix" any values
+  - Do NOT add missing digits (e.g., if it says $322.18, do NOT change to $3322.18)
+  - Do NOT remove extra digits (keep values exactly as shown)
+  - Do NOT change "NOT_FOUND" to a dollar amount
+  - Do NOT change dollar amounts to "NOT_FOUND"
+  - Do NOT modify descriptions (keep typos, truncations, everything)
+  - Do NOT modify dates
+  - Do NOT skip or add rows
+
+  ✅ CORRECT BEHAVIOR - COPY EXACTLY:
+  If original table row says: | 07/09/2025 | EFTPOS Cash Out... | $322.18 | NOT_FOUND | $48890.58 |
+  Your output should be: | 07/09/2025 | EFTPOS Cash Out... | $322.18 |
+
+  If original table row says: | 02/09/2025 | Salary Payment... | NOT_FOUND | $8105.71 | $51511.48 |
+  Your output should be: | 02/09/2025 | Salary Payment... | NOT_FOUND |
+
+  REMEMBER: You are FILTERING columns (removing unwanted columns), NOT extracting data!
+  Source: My previous response (the text I already gave you)
+  Method: Copy the specified columns character-by-character
 
   Output the 3-column markdown table:
   | {date_column} | {description_column} | {debit_column} |
   |---------------|----------------------|----------------|
-  | ...all rows from original table with exact values... |
+  | ...exact values from columns 1, 2, and 3 of original table... |
 
 # Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
 turn2_filter_debits_template: |
