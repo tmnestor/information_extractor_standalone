@@ -230,215 +230,96 @@ table_extraction_template: |
 # MULTI-TURN EXTRACTION PROMPTS
 # ============================================================================
 
-# Structure detection - Extract FULL markdown table + metadata
+# Structure detection - Identify document type and column headers ONLY (NO data extraction)
 structure_detection_template: |
   ═══════════════════════════════════════════════════════════════════════════
-  TASK 0: DOCUMENT TYPE DETECTION
+  TURN 0: DOCUMENT TYPE & COLUMN HEADER DETECTION
   ═══════════════════════════════════════════════════════════════════════════
 
-  First, identify what type of document this is:
+  Analyze this business document image and identify its type using visual and content cues.
 
-  📊 BANK_STATEMENT indicators:
-  - Transaction table with multiple rows spanning days/weeks
-  - Columns: Date, Description, Debit/Withdrawal, Credit/Deposit, Balance
-  - Running balance that changes with each transaction
-  - Bank name/logo, account number, statement period
+  VISUAL LAYOUT ANALYSIS:
 
-  📄 INVOICE indicators:
-  - "Invoice #", "Bill To", "Invoice Date"
-  - Line items table with: Description, Quantity, Unit Price, Total
-  - Subtotal, Tax, Total Amount sections
-  - Single billing document for services/products
+  INVOICE/ESTIMATE/QUOTE INDICATORS:
+  - Header: "INVOICE", "TAX INVOICE", "ESTIMATE", "QUOTE", "QUOTATION", "PROFORMA"
+  - Layout: Business header → Customer "Bill To" section → Itemized table → Total section
+  - Key fields: Invoice/Quote number, Due date, Line items with quantities/prices
+  - Table structure: Description | Qty | Unit Price | Total columns
+  - Bottom section: Subtotal, GST, TOTAL amounts
+  - Visual: Professional business letterhead, structured pricing table
 
-  🧾 RECEIPT indicators:
-  - Store/merchant name at top
-  - Purchased items with individual prices
-  - Single transaction/purchase
-  - Payment method (Cash/Card)
-  - "Thank you" message
+  RECEIPT INDICATORS:
+  - Header: "RECEIPT", "PURCHASE RECEIPT", "SALES RECEIPT", "TAX INVOICE"
+  - Layout: Store/merchant header → Transaction details → Payment confirmation
+  - Key fields: Receipt number, Transaction date/time, Payment method
+  - Content: Completed purchase, "Amount tendered", "Change given"
+  - Visual: Store branding, compact format, payment confirmation details
+  - Transaction-focused rather than billing-focused
 
-  Output document type first:
+  BANK STATEMENT INDICATORS:
+  - Header: "BANK STATEMENT", "ACCOUNT STATEMENT", "CREDIT CARD STATEMENT"
+  - Layout: Bank header → Account details → Transaction table → Summary
+  - Key fields: Account number, Statement period, Opening/Closing balance
+  - Table structure: Date | Description | Debit | Credit | Balance (or similar)
+  - Visual: Bank logo/branding, tabular transaction list, running balance
+  - Multiple transactions over time period, not single purchase
+
+  DECISION CRITERIA:
+  1. Document title/header text (strongest indicator)
+  2. Table structure and column headers
+  3. Presence of account numbers vs invoice numbers
+  4. Single transaction vs multiple transactions over time
+  5. Future-oriented (estimates/quotes) vs past transactions
+
+  ═══════════════════════════════════════════════════════════════════════════
+
+  Output document type:
   DOCUMENT_TYPE: [BANK_STATEMENT | INVOICE | RECEIPT]
 
-  If NOT a bank statement → Stop here, do not extract transaction table
-  If IS a bank statement → Continue to bank statement extraction below
+  If NOT BANK_STATEMENT → STOP HERE (output only DOCUMENT_TYPE)
 
   ═══════════════════════════════════════════════════════════════════════════
-  BANK STATEMENT EXTRACTION (only if DOCUMENT_TYPE: BANK_STATEMENT)
+  IF BANK_STATEMENT: EXTRACT COLUMN HEADERS ONLY (DO NOT EXTRACT DATA ROWS)
   ═══════════════════════════════════════════════════════════════════════════
 
-  🚨🚨🚨 CRITICAL WARNING 🚨🚨🚨
+  TASK: Read the transaction table column headers
 
-  YOU ARE MAKING A SYSTEMATIC ERROR: Copying the Balance column into the credit/deposit column!
+  Look at the transaction table and identify the EXACT column header names.
 
-  COMMON ERROR YOU MUST AVOID:
-  ❌ WRONG - You keep doing this:
-  | Date | Description | $100.00 | $5000.00 | $5000.00 |
-                                    ↑ [Credit/Deposit]  ↑ Balance
-  Problem: $5000.00 appears in BOTH columns - this means you copied Balance → credit/deposit!
+  Common variations:
+  - Date column: "Date", "Transaction Date", "Posting Date", "Trans Date"
+  - Description: "Description", "Transaction", "Details", "Merchant", "Transaction Details"
+  - Debit/Withdrawal: "Debit", "Withdrawal", "Withdrawals", "Paid Out", "Amount", "Debits"
+  - Credit/Deposit: "Credit", "Deposit", "Deposits", "Paid In", "Amount", "Credits"
+  - Balance: "Balance", "Running Balance", "Closing Balance", "Current Balance"
 
-  ✅ CORRECT - This is what you MUST do instead:
-  | Date | Description | $100.00 | NOT_FOUND | $5000.00 |
-                                    ↑ Write "NOT_FOUND" for empty cells!
+  IMPORTANT: Use the EXACT header text from the image - these will be used as literals in subsequent turns!
 
-  🚨 MANDATORY PRE-EXTRACTION CHECKLIST (complete BEFORE you start):
-  □ Step 1: Look at the column headers in YOUR image and note their EXACT NAMES and FIXED POSITIONS
-           (e.g., "Debit"/"Credit", "Withdrawal"/"Deposit", "Paid"/"Received", "Amount", etc.)
-  □ Step 2: For EACH row, identify which column positions have visible amounts and which are EMPTY
-  □ Step 3: For ANY empty position, you will write the exact text "NOT_FOUND"
-  □ Step 4: You will NEVER copy Balance into ANY other column - each column has different values!
-  □ Step 5: If the credit/deposit column is empty in the image → write "NOT_FOUND" (not Balance!)
-  □ Step 6: If the debit/withdrawal column is empty in the image → write "NOT_FOUND" (not Balance!)
-  □ Step 7: Default assumption: Most rows have ONLY debit OR credit, so one column will be "NOT_FOUND"
+  TASK: Count transaction rows
 
-  Extract the transaction table from this bank statement image as markdown.
-
-  Look at the bank statement and find the main transaction table.
-  Extract ALL rows from the table exactly as shown, including:
-  - All column headers
-  - All transaction rows (do not skip any rows)
-  - Preserve exact spacing and alignment
-
-  CRITICAL COLUMN RULES:
-
-  ⚠️ RULE 1: Read columns by POSITION, not by content!
-  - First, identify the VERTICAL POSITION of each column by looking at YOUR image's headers
-  - The debit/withdrawal column is always in the SAME POSITION for every row (whatever it's called)
-  - The credit/deposit column is always in the SAME POSITION for every row (whatever it's called)
-  - The Balance column is always in the SAME POSITION for every row
-  - DO NOT shift columns when you encounter empty cells!
-  - Empty cells still OCCUPY SPACE - write "NOT_FOUND" for them, don't skip them!
-
-  ⚠️ RULE 2: NEVER skip over empty cells - they still count as columns!
-  - If the debit/withdrawal column is empty → write "NOT_FOUND" in that column position
-  - If the credit/deposit column is empty → write "NOT_FOUND" in that column position
-  - DO NOT read the next value and put it in the empty cell's position
-  - Each row must have the SAME NUMBER of columns
-
-  ⚠️ RULE 3: Read each column independently - DO NOT COPY values between columns!
-  - Debit/withdrawal column: Contains amounts going OUT (whatever it's called in YOUR image)
-  - Credit/deposit column: Contains amounts coming IN (whatever it's called in YOUR image)
-  - Balance column: Contains running balance after transaction
-  - These are THREE DIFFERENT VALUES - never duplicate between columns!
-
-  ⚠️ RULE 4: NEVER DUPLICATE BALANCE INTO WITHDRAWAL OR DEPOSIT COLUMNS!
-  🚨 THIS IS YOUR MOST COMMON ERROR - PAY SPECIAL ATTENTION! 🚨
-
-  SELF-CHECK for EVERY row you extract:
-  - After writing the credit/deposit column value, compare it to Balance value
-  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to credit/deposit by mistake!
-  - Fix it: Replace credit/deposit with "NOT_FOUND"
-  - After writing the debit/withdrawal column value, compare it to Balance value
-  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to debit/withdrawal by mistake!
-  - Fix it: Replace debit/withdrawal with "NOT_FOUND"
-
-  Examples of this error (which you keep making):
-  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← [Credit]=$1000, Balance=$1000 → ERROR!
-  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 | ← Fixed: [Credit] is empty in image
-  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← [Debit]=$1000, Balance=$1000 → ERROR!
-  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 | ← Fixed: [Debit] is empty in image
-
-  ⚠️ RULE 5: Each transaction is EITHER debit OR credit (not both)
-  - Look at the image carefully - find which column has the amount
-  - If the debit/withdrawal column (in YOUR image) has an amount → extract it, write "NOT_FOUND" in credit/deposit
-  - If the credit/deposit column (in YOUR image) has an amount → extract it, write "NOT_FOUND" in debit/withdrawal
-  - If column is blank/empty in image → write the text "NOT_FOUND" (don't copy from Balance!)
-  - "NOT_FOUND" is a literal text string - write these exact 9 characters, NOT an empty/blank cell!
-
-  ⚠️ RULE 6: If you can't read a value clearly, write the text "NOT_FOUND"
-  - DO NOT guess or copy from other columns
-  - DO NOT use the Balance value for debit/withdrawal or credit/deposit columns
-  - DO NOT leave cells empty/blank - always write "NOT_FOUND" for missing values
-  - Better to say "NOT_FOUND" than to copy the wrong value
-
-  ⚠️ RULE 7: Verify column alignment for EVERY row
-  - Count the column positions based on YOUR image's headers (typically: Date, Description, Debit, Credit, Balance)
-  - Make sure each row has the same number of values as the header (use "NOT_FOUND" to fill empty positions)
-  - The rightmost value should ALWAYS be Balance
-  - If you see the same value in credit/deposit AND Balance columns → you made a mistake!
-  - If you see the same value in debit/withdrawal AND Balance columns → you made a mistake!
-
-  CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
-  - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
-  - Create a SEPARATE row for EACH transaction under that date header
-  - Repeat the same date in the Date column for each transaction
-  - Each transaction gets its own row with: unique description, unique amount, unique balance
-  - Do NOT combine multiple transactions into a single row
-  - Count the number of balances shown = number of rows to create for that date
-
-  Task 1: Analyze the table structure - Choose ONE structure type:
-
-  🔵 FLAT Structure:
-  - Every transaction row has a populated Date column
-  - Date column is NEVER blank or empty
-  - Number of dates = number of transactions
-  - Each row is a complete independent transaction
-
-  🟠 DATE_GROUPED Structure:
-  - Date appears once as a header/label for multiple transactions
-  - Transactions below the date have BLANK/EMPTY Date cells
-  - Number of dates < number of transactions
-  - Transactions are grouped/nested under date headers
-
-  CLASSIFICATION METHOD:
-  Step 1: Count total transaction rows (count Balance column entries)
-  Step 2: Count populated Date cells (non-blank dates)
-  Step 3: Compare counts:
-    - If populated dates = total transactions → FLAT
-    - If populated dates < total transactions → DATE_GROUPED
-
-  Task 2: Extract metadata and full table
-
-  CRITICAL: To count transaction rows accurately:
-  - Count the number of entries in the rightmost column (Balance)
+  - Count the number of entries in the rightmost column (Balance column)
   - This equals the number of transaction rows
   - Do NOT count the header row
   - Example: 40 balance entries = 40 transaction rows
 
-  🚨 FINAL REMINDER BEFORE YOU START EXTRACTING:
-  - First, identify what the debit/withdrawal column is called in YOUR image (e.g., "Debit", "Withdrawal", "Paid", "Amount")
-  - First, identify what the credit/deposit column is called in YOUR image (e.g., "Credit", "Deposit", "Received", "Amount")
-  - For EACH row you extract, ask yourself: "Is the [debit/withdrawal column] empty in the image?"
-    → If YES (empty in image) → Write "NOT_FOUND" in that column position (DON'T copy Balance!)
-    → If NO (has a value) → Extract that value
-  - For EACH row you extract, ask yourself: "Is the [credit/deposit column] empty in the image?"
-    → If YES (empty in image) → Write "NOT_FOUND" in that column position (DON'T copy Balance!)
-    → If NO (has a value) → Extract that value
-  - MOST rows will have EITHER debit OR credit filled, but NOT BOTH
-  - Therefore, MOST rows should have "NOT_FOUND" in either the debit column or the credit column
-  - If you extract a table where EVERY row has values in BOTH debit AND credit columns → YOU MADE A MISTAKE!
+  ═══════════════════════════════════════════════════════════════════════════
+  OUTPUT FORMAT (DO NOT EXTRACT TABLE DATA - ONLY METADATA)
+  ═══════════════════════════════════════════════════════════════════════════
 
-  Output format:
   DOCUMENT_TYPE: BANK_STATEMENT
-  STRUCTURE_TYPE: [flat | date_grouped]
-  COLUMN_HEADERS: [header1] | [header2] | [header3] | ...
-  ESTIMATED_ROWS: [count balance column entries - this equals transaction rows]
+  COLUMN_HEADERS: [header1] | [header2] | [header3] | [header4] | [header5]
+  ESTIMATED_ROWS: [number]
 
-  MARKDOWN_TABLE:
-  | Header1 | Header2 | Header3 | ... |
-  |---------|---------|---------|-----|
-  | value1  | value2  | value3  | ... |
-  | value1  | value2  | value3  | ... |
-  ...
+  Example output (use PIPE | separators, not commas):
+  DOCUMENT_TYPE: BANK_STATEMENT
+  COLUMN_HEADERS: Date | Description | Withdrawal | Deposit | Balance
+  ESTIMATED_ROWS: 40
 
-  IMPORTANT: For missing/empty values, use the literal text "NOT_FOUND" (9 characters):
+  ⚠️ IMPORTANT: Use pipe | characters to separate headers, NOT commas!
 
-  ✅ CORRECT - Each row has 5 columns (empty cells filled with "NOT_FOUND"):
-  | DD/MM/YYYY | Withdrawal Transaction | $XXX.XX | NOT_FOUND | $YYYY.YY |  ← Withdrawal only
-  | DD/MM/YYYY | Deposit Transaction | NOT_FOUND | $AAA.AA | $BBBB.BB |  ← Deposit only
-
-  ❌ WRONG - Column shift (Balance copied to Deposit position):
-  | DD/MM/YYYY | Purchase Description | $100.00 | $5000.00 | $5500.00 |
-  Problem: $5000.00 appears in BOTH Deposit and Balance columns - this is impossible!
-  The $5000.00 is actually the Balance, not a Deposit amount.
-
-  ✅ CORRECT version of above row:
-  | DD/MM/YYYY | Purchase Description | $100.00 | NOT_FOUND | $5000.00 |  ← Deposit empty = "NOT_FOUND"
-
-  ❌ WRONG - DO NOT use empty cells:
-  | DD/MM/YYYY | Income Description |  | $AAA.AA | $BBBB.BB |  ← NO! Write "NOT_FOUND" instead of blank!
-
-  Extract ALL rows - do not filter or skip any transactions.
+  ⚠️ DO NOT EXTRACT THE MARKDOWN TABLE - That will be done in Turn 1!
+  ⚠️ Output ONLY the metadata above (document type, column headers, row count)
+  ⚠️ NO structure type detection - that's not needed!
 
 # Column extraction - Extract values from a specific column
 column_extraction_template: |
@@ -491,53 +372,60 @@ date_column_extraction_template: |
 
 # Turn 1: Filter to 3 columns (TEXT FILTERING ONLY - DO NOT RE-EXTRACT)
 turn1_3column_template: |
-  ⚠️ CRITICAL: This is a TEXT FILTERING task, NOT a data extraction task!
+  ═══════════════════════════════════════════════════════════════════════════
+  TURN 1: FULL TABLE EXTRACTION
+  ═══════════════════════════════════════════════════════════════════════════
 
-  I previously extracted a full markdown table from the bank statement image.
-  That table is in my previous response.
+  In my previous response (Turn 0), I identified these column headers:
+  - Date column: "{date_column}"
+  - Description column: "{description_column}"
+  - Debit/Withdrawal column: "{debit_column}"
 
-  YOUR TASK: Copy the table from my previous response and remove 2 columns.
+  NOW extract the FULL transaction table from the bank statement image.
+  Use the EXACT column names I identified above as the literal column headers.
 
-  STEP 1: Find the markdown table in my previous response (starts with "MARKDOWN_TABLE:")
+  🚨🚨🚨 CRITICAL WARNING 🚨🚨🚨
 
-  STEP 2: Create a new table with ONLY these 3 columns:
-  - Column 1: "{date_column}"
-  - Column 2: "{description_column}"
-  - Column 3: "{debit_column}"
+  YOU HAVE A SYSTEMATIC ERROR: Copying Balance column into the debit/credit columns!
 
-  STEP 3: For EACH row in the original table:
-  - Copy the value from "{date_column}" column → paste into new table column 1
-  - Copy the value from "{description_column}" column → paste into new table column 2
-  - Copy the value from "{debit_column}" column → paste into new table column 3
-  - Keep the EXACT text character-by-character - do NOT modify anything!
+  ❌ WRONG - You keep doing this:
+  | {date_column} | {description_column} | $100.00 | $5000.00 | $5000.00 |
+                                                     ↑ {debit_column}  ↑ Balance
+  Problem: $5000.00 in BOTH columns = you copied Balance!
 
-  ❌ FORBIDDEN ACTIONS (DO NOT DO THESE):
-  - Do NOT look at the bank statement image again
-  - Do NOT re-extract data from the image
-  - Do NOT "correct" or "fix" any values
-  - Do NOT add missing digits (e.g., if it says $123.45, do NOT change to $1123.45)
-  - Do NOT remove extra digits (keep values exactly as shown)
-  - Do NOT change "NOT_FOUND" to a dollar amount
-  - Do NOT change dollar amounts to "NOT_FOUND"
-  - Do NOT modify descriptions (keep typos, truncations, everything)
-  - Do NOT modify dates
-  - Do NOT skip or add rows
+  ✅ CORRECT:
+  | {date_column} | {description_column} | $100.00 | NOT_FOUND | $5000.00 |
+                                                     ↑ Write "NOT_FOUND" for empty cells!
 
-  ✅ CORRECT BEHAVIOR - COPY EXACTLY:
-  If original table row says: | DD/MM/YYYY | Withdrawal Description... | $XXX.XX | NOT_FOUND | $YYYY.YY |
-  Your output should be: | DD/MM/YYYY | Withdrawal Description... | $XXX.XX |
+  CRITICAL EXTRACTION RULES:
 
-  If original table row says: | DD/MM/YYYY | Deposit Description... | NOT_FOUND | $AAA.AA | $BBBB.BB |
-  Your output should be: | DD/MM/YYYY | Deposit Description... | NOT_FOUND |
+  ⚠️ RULE 1: Read by POSITION - empty cells OCCUPY SPACE!
+  - Identify FIXED column POSITIONS from headers (left→right)
+  - "{debit_column}" is ALWAYS in the same position every row
+  - Credit/deposit is ALWAYS in the same position every row
+  - Balance is ALWAYS in the same position every row
+  - Empty cell? → Write "NOT_FOUND" (don't skip to next value!)
 
-  REMEMBER: You are FILTERING columns (removing unwanted columns), NOT extracting data!
-  Source: My previous response (the text I already gave you)
-  Method: Copy the specified columns character-by-character
+  ⚠️ RULE 2: NEVER copy Balance into "{debit_column}" or credit columns!
+  - SELF-CHECK every row: Is "{debit_column}" value = Balance value?
+  - If YES → ERROR! Replace "{debit_column}" with "NOT_FOUND"
+  - Is credit/deposit value = Balance value?
+  - If YES → ERROR! Replace credit/deposit with "NOT_FOUND"
 
-  Output the 3-column markdown table:
-  | {date_column} | {description_column} | {debit_column} |
-  |---------------|----------------------|----------------|
-  | ...exact values from columns 1, 2, and 3 of original table... |
+  ⚠️ RULE 3: Each transaction is EITHER debit OR credit (not both)
+  - If "{debit_column}" has amount → write "NOT_FOUND" in credit column
+  - If credit has amount → write "NOT_FOUND" in "{debit_column}" column
+  - MOST rows will have "NOT_FOUND" in one of these two columns!
+
+  ⚠️ RULE 4: "NOT_FOUND" is literal text (9 characters)
+  - NOT an empty/blank cell!
+  - Write the exact text: NOT_FOUND
+
+  Extract ALL transaction rows as markdown table with ALL columns:
+
+  | {date_column} | {description_column} | {debit_column} | Credit/Deposit | Balance |
+  |---------------|----------------------|----------------|----------------|---------|
+  | ...extract every row with "NOT_FOUND" for empty cells... |
 
 # Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
 turn2_filter_debits_template: |
