@@ -125,22 +125,44 @@ table_extraction_template: |
 
 # Structure detection - Extract FULL markdown table + metadata
 structure_detection_template: |
-  Extract the transaction table from this bank statement image.
+  Extract the transaction table from this bank statement image as markdown.
 
-  Task 1: Extract the COMPLETE table as markdown
-  - Include ALL columns (do not skip any columns)
-  - Include ALL rows (do not filter any rows)
-  - Preserve exact column header names
-  - Use proper markdown table format with pipes (|)
+  Look at the bank statement and find the main transaction table.
+  Extract ALL rows from the table exactly as shown, including:
+  - All column headers
+  - All transaction rows (do not skip any rows)
+  - Preserve exact spacing and alignment
 
-  Task 2: Analyze the table structure
+  CRITICAL COLUMN RULES:
+  - Each row must have EITHER Withdrawal OR Deposit filled, NEVER both
+  - If a transaction reduces the balance, put the amount in Withdrawal column (leave Deposit empty)
+  - If a transaction increases the balance, put the amount in Deposit column (leave Withdrawal empty)
+  - Use empty string for the unused column (do not put the amount in both columns)
+
+  CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
+  - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
+  - Create a SEPARATE row for EACH transaction under that date header
+  - Repeat the same date in the Date column for each transaction
+  - Each transaction gets its own row with: unique description, unique amount, unique balance
+  - Do NOT combine multiple transactions into a single row
+  - Count the number of balances shown = number of rows to create for that date
+
+  Task 1: Analyze the table structure
   - FLAT: Each transaction has its OWN date in the date column (every row has a date)
   - DATE_GROUPED: Multiple transactions share a single date header (some rows have blank dates)
+
+  Task 2: Extract metadata and full table
+
+  CRITICAL: To count transaction rows accurately:
+  - Count the number of entries in the rightmost column (Balance)
+  - This equals the number of transaction rows
+  - Do NOT count the header row
+  - Example: 40 balance entries = 40 transaction rows
 
   Output format:
   STRUCTURE_TYPE: [flat | date_grouped]
   COLUMN_HEADERS: [header1] | [header2] | [header3] | ...
-  ESTIMATED_ROWS: [number]
+  ESTIMATED_ROWS: [count balance column entries - this equals transaction rows]
 
   MARKDOWN_TABLE:
   | Header1 | Header2 | Header3 | ... |
@@ -148,6 +170,8 @@ structure_detection_template: |
   | value1  | value2  | value3  | ... |
   | value1  | value2  | value3  | ... |
   ...
+
+  Extract ALL rows - do not filter or skip any transactions.
 
 # Column extraction - Extract values from a specific column
 column_extraction_template: |
