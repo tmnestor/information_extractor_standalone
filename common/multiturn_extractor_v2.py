@@ -172,18 +172,27 @@ class MultiTurnExtractorV2:
         console.print(turn1_table)
         console.print("[dim]" + "=" * 80 + "[/dim]\n")
 
-        # Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
-        console.print("\n[cyan]Turn 2:[/cyan] Filtering to withdrawals only...")
-        console.print(f"  Removing rows where '{structure.debit_column}' is \"NOT_FOUND\" or empty...")
-        console.print("  [dim]Using Turn 0 and Turn 1 responses for conversation context...[/dim]")
+        # ============================================================================
+        # TURN 2 DISABLED - First verify Turn 0 and Turn 1 are working correctly
+        # ============================================================================
+        console.print("\n[bold yellow]⚠️  Turn 2 DISABLED - Stopping after Turn 1[/bold yellow]")
+        console.print("[yellow]Verify Turn 0 and Turn 1 prompts and responses before proceeding[/yellow]")
 
-        markdown_table = self._turn2_filter_debits(
-            image_path, structure, turn0_response, turn1_table
-        )
+        # Return Turn 1 result for now
+        return turn1_table
 
-        console.print("\n[bold green]✅ Extraction complete (3 turns)[/bold green]")
+        # # Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
+        # console.print("\n[cyan]Turn 2:[/cyan] Filtering to withdrawals only...")
+        # console.print(f"  Removing rows where '{structure.debit_column}' is \"NOT_FOUND\" or empty...")
+        # console.print("  [dim]Using Turn 0 and Turn 1 responses for conversation context...[/dim]")
 
-        return markdown_table
+        # markdown_table = self._turn2_filter_debits(
+        #     image_path, structure, turn0_response, turn1_table
+        # )
+
+        # console.print("\n[bold green]✅ Extraction complete (3 turns)[/bold green]")
+
+        # return markdown_table
 
     def extract_bank_statement_OLD(
         self, image_path: str | Path

@@ -90,25 +90,27 @@ extraction_template: |
 table_extraction_template: |
   🚨🚨🚨 CRITICAL WARNING 🚨🚨🚨
 
-  YOU ARE MAKING A SYSTEMATIC ERROR: Copying the Balance column into the Deposit column!
+  YOU ARE MAKING A SYSTEMATIC ERROR: Copying the Balance column into the credit/deposit column!
 
   COMMON ERROR YOU MUST AVOID:
   ❌ WRONG - You keep doing this:
   | Date | Description | $100.00 | $5000.00 | $5000.00 |
-                                    ↑ Deposit  ↑ Balance
-  Problem: $5000.00 appears in BOTH columns - this means you copied Balance → Deposit!
+                                    ↑ [Credit/Deposit]  ↑ Balance
+  Problem: $5000.00 appears in BOTH columns - this means you copied Balance → credit/deposit!
 
   ✅ CORRECT - This is what you MUST do instead:
   | Date | Description | $100.00 | NOT_FOUND | $5000.00 |
                                     ↑ Write "NOT_FOUND" for empty cells!
 
   🚨 MANDATORY PRE-EXTRACTION CHECKLIST (complete BEFORE you start):
-  □ Step 1: Look at the column headers and note their FIXED POSITIONS (left to right)
-  □ Step 2: For EACH row, identify which positions have visible amounts and which are EMPTY
+  □ Step 1: Look at the column headers in YOUR image and note their EXACT NAMES and FIXED POSITIONS
+           (e.g., "Debit"/"Credit", "Withdrawal"/"Deposit", "Paid"/"Received", "Amount", etc.)
+  □ Step 2: For EACH row, identify which column positions have visible amounts and which are EMPTY
   □ Step 3: For ANY empty position, you will write the exact text "NOT_FOUND"
-  □ Step 4: You will NEVER copy Balance into Withdrawal or Deposit - they are different values!
-  □ Step 5: If Deposit column is empty in the image → write "NOT_FOUND" (not Balance!)
-  □ Step 6: Default assumption: Most rows have ONLY withdrawal OR deposit, so one column will be "NOT_FOUND"
+  □ Step 4: You will NEVER copy Balance into ANY other column - each column has different values!
+  □ Step 5: If the credit/deposit column is empty in the image → write "NOT_FOUND" (not Balance!)
+  □ Step 6: If the debit/withdrawal column is empty in the image → write "NOT_FOUND" (not Balance!)
+  □ Step 7: Default assumption: Most rows have ONLY debit OR credit, so one column will be "NOT_FOUND"
 
   Extract the transaction table from this bank statement image as markdown.
 
@@ -121,22 +123,22 @@ table_extraction_template: |
   CRITICAL COLUMN RULES:
 
   ⚠️ RULE 1: Read columns by POSITION, not by content!
-  - First, identify the VERTICAL POSITION of each column by looking at the headers
-  - The Withdrawal column is always in the SAME POSITION for every row
-  - The Deposit column is always in the SAME POSITION for every row
+  - First, identify the VERTICAL POSITION of each column by looking at YOUR image's headers
+  - The debit/withdrawal column is always in the SAME POSITION for every row (whatever it's called)
+  - The credit/deposit column is always in the SAME POSITION for every row (whatever it's called)
   - The Balance column is always in the SAME POSITION for every row
   - DO NOT shift columns when you encounter empty cells!
   - Empty cells still OCCUPY SPACE - write "NOT_FOUND" for them, don't skip them!
 
   ⚠️ RULE 2: NEVER skip over empty cells - they still count as columns!
-  - If Withdrawal is empty → write "NOT_FOUND" in that column position
-  - If Deposit is empty → write "NOT_FOUND" in that column position
+  - If the debit/withdrawal column is empty → write "NOT_FOUND" in that column position
+  - If the credit/deposit column is empty → write "NOT_FOUND" in that column position
   - DO NOT read the next value and put it in the empty cell's position
   - Each row must have the SAME NUMBER of columns
 
   ⚠️ RULE 3: Read each column independently - DO NOT COPY values between columns!
-  - Withdrawal column: Contains withdrawal/debit amounts (money OUT)
-  - Deposit column: Contains deposit/credit amounts (money IN)
+  - Debit/withdrawal column: Contains amounts going OUT (whatever it's called in YOUR image)
+  - Credit/deposit column: Contains amounts coming IN (whatever it's called in YOUR image)
   - Balance column: Contains running balance after transaction
   - These are THREE DIFFERENT VALUES - never duplicate between columns!
 
@@ -144,34 +146,38 @@ table_extraction_template: |
   🚨 THIS IS YOUR MOST COMMON ERROR - PAY SPECIAL ATTENTION! 🚨
 
   SELF-CHECK for EVERY row you extract:
-  - After writing Deposit value, compare it to Balance value
-  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to Deposit by mistake!
-  - Fix it: Replace Deposit with "NOT_FOUND"
+  - After writing the credit/deposit column value, compare it to Balance value
+  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to credit/deposit by mistake!
+  - Fix it: Replace credit/deposit with "NOT_FOUND"
+  - After writing the debit/withdrawal column value, compare it to Balance value
+  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to debit/withdrawal by mistake!
+  - Fix it: Replace debit/withdrawal with "NOT_FOUND"
 
   Examples of this error (which you keep making):
-  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit=$1000, Balance=$1000 → ERROR!
-  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 | ← Fixed: Deposit is empty in image
-  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal=$1000, Balance=$1000 → ERROR!
-  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 | ← Fixed: Withdrawal is empty in image
+  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← [Credit]=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 | ← Fixed: [Credit] is empty in image
+  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← [Debit]=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 | ← Fixed: [Debit] is empty in image
 
-  ⚠️ RULE 5: Each transaction is EITHER withdrawal OR deposit (not both)
+  ⚠️ RULE 5: Each transaction is EITHER debit OR credit (not both)
   - Look at the image carefully - find which column has the amount
-  - If Withdrawal column (in image) has an amount → extract it, put the text "NOT_FOUND" in Deposit
-  - If Deposit column (in image) has an amount → extract it, put the text "NOT_FOUND" in Withdrawal
+  - If the debit/withdrawal column (in YOUR image) has an amount → extract it, write "NOT_FOUND" in credit/deposit
+  - If the credit/deposit column (in YOUR image) has an amount → extract it, write "NOT_FOUND" in debit/withdrawal
   - If column is blank/empty in image → write the text "NOT_FOUND" (don't copy from Balance!)
   - "NOT_FOUND" is a literal text string - write these exact 9 characters, NOT an empty/blank cell!
 
   ⚠️ RULE 6: If you can't read a value clearly, write the text "NOT_FOUND"
   - DO NOT guess or copy from other columns
-  - DO NOT use the Balance value for Withdrawal or Deposit
+  - DO NOT use the Balance value for debit/withdrawal or credit/deposit columns
   - DO NOT leave cells empty/blank - always write "NOT_FOUND" for missing values
   - Better to say "NOT_FOUND" than to copy the wrong value
 
   ⚠️ RULE 7: Verify column alignment for EVERY row
-  - Count the column positions: 1=Date, 2=Description, 3=Withdrawal, 4=Deposit, 5=Balance
-  - Make sure each row has exactly 5 values (use "NOT_FOUND" to fill empty positions)
+  - Count the column positions based on YOUR image's headers (typically: Date, Description, Debit, Credit, Balance)
+  - Make sure each row has the same number of values as the header (use "NOT_FOUND" to fill empty positions)
   - The rightmost value should ALWAYS be Balance
-  - If you see the same value in both Deposit and Balance columns → you made a mistake!
+  - If you see the same value in credit/deposit AND Balance columns → you made a mistake!
+  - If you see the same value in debit/withdrawal AND Balance columns → you made a mistake!
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -182,12 +188,17 @@ table_extraction_template: |
   - Count the number of balances shown = number of rows to create for that date
 
   🚨 FINAL REMINDER BEFORE YOU START EXTRACTING:
-  - For EACH row you extract, ask yourself: "Is the Deposit column empty in the image?"
-  - If YES (empty in image) → Write "NOT_FOUND" in the Deposit column (DON'T copy Balance!)
-  - If NO (has a value in image) → Extract that value
-  - MOST rows will have either Withdrawal OR Deposit filled, but NOT BOTH
-  - Therefore, MOST rows should have "NOT_FOUND" in either the Withdrawal or Deposit column
-  - If you extract a table where EVERY row has values in both Withdrawal AND Deposit → YOU MADE A MISTAKE!
+  - First, identify what the debit/withdrawal column is called in YOUR image (e.g., "Debit", "Withdrawal", "Paid", "Amount")
+  - First, identify what the credit/deposit column is called in YOUR image (e.g., "Credit", "Deposit", "Received", "Amount")
+  - For EACH row you extract, ask yourself: "Is the [debit/withdrawal column] empty in the image?"
+    → If YES (empty in image) → Write "NOT_FOUND" in that column position (DON'T copy Balance!)
+    → If NO (has a value) → Extract that value
+  - For EACH row you extract, ask yourself: "Is the [credit/deposit column] empty in the image?"
+    → If YES (empty in image) → Write "NOT_FOUND" in that column position (DON'T copy Balance!)
+    → If NO (has a value) → Extract that value
+  - MOST rows will have EITHER debit OR credit filled, but NOT BOTH
+  - Therefore, MOST rows should have "NOT_FOUND" in either the debit column or the credit column
+  - If you extract a table where EVERY row has values in BOTH debit AND credit columns → YOU MADE A MISTAKE!
 
   Output ONLY the markdown table, nothing else.
   Use this markdown table format:
@@ -221,27 +232,64 @@ table_extraction_template: |
 
 # Structure detection - Extract FULL markdown table + metadata
 structure_detection_template: |
+  ═══════════════════════════════════════════════════════════════════════════
+  TASK 0: DOCUMENT TYPE DETECTION
+  ═══════════════════════════════════════════════════════════════════════════
+
+  First, identify what type of document this is:
+
+  📊 BANK_STATEMENT indicators:
+  - Transaction table with multiple rows spanning days/weeks
+  - Columns: Date, Description, Debit/Withdrawal, Credit/Deposit, Balance
+  - Running balance that changes with each transaction
+  - Bank name/logo, account number, statement period
+
+  📄 INVOICE indicators:
+  - "Invoice #", "Bill To", "Invoice Date"
+  - Line items table with: Description, Quantity, Unit Price, Total
+  - Subtotal, Tax, Total Amount sections
+  - Single billing document for services/products
+
+  🧾 RECEIPT indicators:
+  - Store/merchant name at top
+  - Purchased items with individual prices
+  - Single transaction/purchase
+  - Payment method (Cash/Card)
+  - "Thank you" message
+
+  Output document type first:
+  DOCUMENT_TYPE: [BANK_STATEMENT | INVOICE | RECEIPT]
+
+  If NOT a bank statement → Stop here, do not extract transaction table
+  If IS a bank statement → Continue to bank statement extraction below
+
+  ═══════════════════════════════════════════════════════════════════════════
+  BANK STATEMENT EXTRACTION (only if DOCUMENT_TYPE: BANK_STATEMENT)
+  ═══════════════════════════════════════════════════════════════════════════
+
   🚨🚨🚨 CRITICAL WARNING 🚨🚨🚨
 
-  YOU ARE MAKING A SYSTEMATIC ERROR: Copying the Balance column into the Deposit column!
+  YOU ARE MAKING A SYSTEMATIC ERROR: Copying the Balance column into the credit/deposit column!
 
   COMMON ERROR YOU MUST AVOID:
   ❌ WRONG - You keep doing this:
   | Date | Description | $100.00 | $5000.00 | $5000.00 |
-                                    ↑ Deposit  ↑ Balance
-  Problem: $5000.00 appears in BOTH columns - this means you copied Balance → Deposit!
+                                    ↑ [Credit/Deposit]  ↑ Balance
+  Problem: $5000.00 appears in BOTH columns - this means you copied Balance → credit/deposit!
 
   ✅ CORRECT - This is what you MUST do instead:
   | Date | Description | $100.00 | NOT_FOUND | $5000.00 |
                                     ↑ Write "NOT_FOUND" for empty cells!
 
   🚨 MANDATORY PRE-EXTRACTION CHECKLIST (complete BEFORE you start):
-  □ Step 1: Look at the column headers and note their FIXED POSITIONS (left to right)
-  □ Step 2: For EACH row, identify which positions have visible amounts and which are EMPTY
+  □ Step 1: Look at the column headers in YOUR image and note their EXACT NAMES and FIXED POSITIONS
+           (e.g., "Debit"/"Credit", "Withdrawal"/"Deposit", "Paid"/"Received", "Amount", etc.)
+  □ Step 2: For EACH row, identify which column positions have visible amounts and which are EMPTY
   □ Step 3: For ANY empty position, you will write the exact text "NOT_FOUND"
-  □ Step 4: You will NEVER copy Balance into Withdrawal or Deposit - they are different values!
-  □ Step 5: If Deposit column is empty in the image → write "NOT_FOUND" (not Balance!)
-  □ Step 6: Default assumption: Most rows have ONLY withdrawal OR deposit, so one column will be "NOT_FOUND"
+  □ Step 4: You will NEVER copy Balance into ANY other column - each column has different values!
+  □ Step 5: If the credit/deposit column is empty in the image → write "NOT_FOUND" (not Balance!)
+  □ Step 6: If the debit/withdrawal column is empty in the image → write "NOT_FOUND" (not Balance!)
+  □ Step 7: Default assumption: Most rows have ONLY debit OR credit, so one column will be "NOT_FOUND"
 
   Extract the transaction table from this bank statement image as markdown.
 
@@ -254,22 +302,22 @@ structure_detection_template: |
   CRITICAL COLUMN RULES:
 
   ⚠️ RULE 1: Read columns by POSITION, not by content!
-  - First, identify the VERTICAL POSITION of each column by looking at the headers
-  - The Withdrawal column is always in the SAME POSITION for every row
-  - The Deposit column is always in the SAME POSITION for every row
+  - First, identify the VERTICAL POSITION of each column by looking at YOUR image's headers
+  - The debit/withdrawal column is always in the SAME POSITION for every row (whatever it's called)
+  - The credit/deposit column is always in the SAME POSITION for every row (whatever it's called)
   - The Balance column is always in the SAME POSITION for every row
   - DO NOT shift columns when you encounter empty cells!
   - Empty cells still OCCUPY SPACE - write "NOT_FOUND" for them, don't skip them!
 
   ⚠️ RULE 2: NEVER skip over empty cells - they still count as columns!
-  - If Withdrawal is empty → write "NOT_FOUND" in that column position
-  - If Deposit is empty → write "NOT_FOUND" in that column position
+  - If the debit/withdrawal column is empty → write "NOT_FOUND" in that column position
+  - If the credit/deposit column is empty → write "NOT_FOUND" in that column position
   - DO NOT read the next value and put it in the empty cell's position
   - Each row must have the SAME NUMBER of columns
 
   ⚠️ RULE 3: Read each column independently - DO NOT COPY values between columns!
-  - Withdrawal column: Contains withdrawal/debit amounts (money OUT)
-  - Deposit column: Contains deposit/credit amounts (money IN)
+  - Debit/withdrawal column: Contains amounts going OUT (whatever it's called in YOUR image)
+  - Credit/deposit column: Contains amounts coming IN (whatever it's called in YOUR image)
   - Balance column: Contains running balance after transaction
   - These are THREE DIFFERENT VALUES - never duplicate between columns!
 
@@ -277,34 +325,38 @@ structure_detection_template: |
   🚨 THIS IS YOUR MOST COMMON ERROR - PAY SPECIAL ATTENTION! 🚨
 
   SELF-CHECK for EVERY row you extract:
-  - After writing Deposit value, compare it to Balance value
-  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to Deposit by mistake!
-  - Fix it: Replace Deposit with "NOT_FOUND"
+  - After writing the credit/deposit column value, compare it to Balance value
+  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to credit/deposit by mistake!
+  - Fix it: Replace credit/deposit with "NOT_FOUND"
+  - After writing the debit/withdrawal column value, compare it to Balance value
+  - Are they EXACTLY THE SAME NUMBER? → You copied Balance to debit/withdrawal by mistake!
+  - Fix it: Replace debit/withdrawal with "NOT_FOUND"
 
   Examples of this error (which you keep making):
-  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← Deposit=$1000, Balance=$1000 → ERROR!
-  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 | ← Fixed: Deposit is empty in image
-  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← Withdrawal=$1000, Balance=$1000 → ERROR!
-  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 | ← Fixed: Withdrawal is empty in image
+  - ❌ WRONG: | Date | Desc | $500 | $1000 | $1000 | ← [Credit]=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | $500 | NOT_FOUND | $1000 | ← Fixed: [Credit] is empty in image
+  - ❌ WRONG: | Date | Desc | $1000 | $1000 | $500 | ← [Debit]=$1000, Balance=$1000 → ERROR!
+  - ✅ CORRECT: | Date | Desc | NOT_FOUND | $500 | $1000 | ← Fixed: [Debit] is empty in image
 
-  ⚠️ RULE 5: Each transaction is EITHER withdrawal OR deposit (not both)
+  ⚠️ RULE 5: Each transaction is EITHER debit OR credit (not both)
   - Look at the image carefully - find which column has the amount
-  - If Withdrawal column (in image) has an amount → extract it, put the text "NOT_FOUND" in Deposit
-  - If Deposit column (in image) has an amount → extract it, put the text "NOT_FOUND" in Withdrawal
+  - If the debit/withdrawal column (in YOUR image) has an amount → extract it, write "NOT_FOUND" in credit/deposit
+  - If the credit/deposit column (in YOUR image) has an amount → extract it, write "NOT_FOUND" in debit/withdrawal
   - If column is blank/empty in image → write the text "NOT_FOUND" (don't copy from Balance!)
   - "NOT_FOUND" is a literal text string - write these exact 9 characters, NOT an empty/blank cell!
 
   ⚠️ RULE 6: If you can't read a value clearly, write the text "NOT_FOUND"
   - DO NOT guess or copy from other columns
-  - DO NOT use the Balance value for Withdrawal or Deposit
+  - DO NOT use the Balance value for debit/withdrawal or credit/deposit columns
   - DO NOT leave cells empty/blank - always write "NOT_FOUND" for missing values
   - Better to say "NOT_FOUND" than to copy the wrong value
 
   ⚠️ RULE 7: Verify column alignment for EVERY row
-  - Count the column positions: 1=Date, 2=Description, 3=Withdrawal, 4=Deposit, 5=Balance
-  - Make sure each row has exactly 5 values (use "NOT_FOUND" to fill empty positions)
+  - Count the column positions based on YOUR image's headers (typically: Date, Description, Debit, Credit, Balance)
+  - Make sure each row has the same number of values as the header (use "NOT_FOUND" to fill empty positions)
   - The rightmost value should ALWAYS be Balance
-  - If you see the same value in both Deposit and Balance columns → you made a mistake!
+  - If you see the same value in credit/deposit AND Balance columns → you made a mistake!
+  - If you see the same value in debit/withdrawal AND Balance columns → you made a mistake!
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -344,14 +396,20 @@ structure_detection_template: |
   - Example: 40 balance entries = 40 transaction rows
 
   🚨 FINAL REMINDER BEFORE YOU START EXTRACTING:
-  - For EACH row you extract, ask yourself: "Is the Deposit column empty in the image?"
-  - If YES (empty in image) → Write "NOT_FOUND" in the Deposit column (DON'T copy Balance!)
-  - If NO (has a value in image) → Extract that value
-  - MOST rows will have either Withdrawal OR Deposit filled, but NOT BOTH
-  - Therefore, MOST rows should have "NOT_FOUND" in either the Withdrawal or Deposit column
-  - If you extract a table where EVERY row has values in both Withdrawal AND Deposit → YOU MADE A MISTAKE!
+  - First, identify what the debit/withdrawal column is called in YOUR image (e.g., "Debit", "Withdrawal", "Paid", "Amount")
+  - First, identify what the credit/deposit column is called in YOUR image (e.g., "Credit", "Deposit", "Received", "Amount")
+  - For EACH row you extract, ask yourself: "Is the [debit/withdrawal column] empty in the image?"
+    → If YES (empty in image) → Write "NOT_FOUND" in that column position (DON'T copy Balance!)
+    → If NO (has a value) → Extract that value
+  - For EACH row you extract, ask yourself: "Is the [credit/deposit column] empty in the image?"
+    → If YES (empty in image) → Write "NOT_FOUND" in that column position (DON'T copy Balance!)
+    → If NO (has a value) → Extract that value
+  - MOST rows will have EITHER debit OR credit filled, but NOT BOTH
+  - Therefore, MOST rows should have "NOT_FOUND" in either the debit column or the credit column
+  - If you extract a table where EVERY row has values in BOTH debit AND credit columns → YOU MADE A MISTAKE!
 
   Output format:
+  DOCUMENT_TYPE: BANK_STATEMENT
   STRUCTURE_TYPE: [flat | date_grouped]
   COLUMN_HEADERS: [header1] | [header2] | [header3] | ...
   ESTIMATED_ROWS: [count balance column entries - this equals transaction rows]
@@ -670,16 +728,16 @@ model_specific_document_instructions:
         XX   | PURCHASE       | $30.00     |         | $XXX   ← HAS AMOUNT = EXTRACT
         XX   | INTEREST       |            | $10     | $XXX   ← BLANK = SKIP ENTIRELY
 
-        ⚠️ CRITICAL: If Withdrawal is blank, DO NOT extract date, description, OR amount!
+        ⚠️ CRITICAL: If the debit/withdrawal column is blank, DO NOT extract date, description, OR amount!
 
-        BLANK Withdrawal = CREDIT/DEPOSIT = Money IN = SKIP THE ENTIRE ROW!
+        BLANK debit/withdrawal column = CREDIT/DEPOSIT = Money IN = SKIP THE ENTIRE ROW!
 
-        Common credit transactions to SKIP (Withdrawal always blank):
-        - INCOME DEPOSIT (Withdrawal blank)
-        - PAYROLL CREDIT (Withdrawal blank)
-        - INTEREST CREDIT (Withdrawal blank)
-        - REFUND (Withdrawal blank)
-        - Any description where Withdrawal column is empty/blank
+        Common credit transactions to SKIP (debit/withdrawal column always blank):
+        - INCOME DEPOSIT (debit/withdrawal blank)
+        - PAYROLL CREDIT (debit/withdrawal blank)
+        - INTEREST CREDIT (debit/withdrawal blank)
+        - REFUND (debit/withdrawal blank)
+        - Any description where the debit/withdrawal column is empty/blank
 
         RULE 2: NEVER READ AMOUNTS FROM THE DEPOSIT COLUMN
 
@@ -857,38 +915,38 @@ model_specific_document_instructions:
       bank_statement: |
         Look at the bank statement transaction table.
 
-        ⚠️ ONE CRITICAL RULE: Only extract rows where the Withdrawal column has a dollar amount.
+        ⚠️ ONE CRITICAL RULE: Only extract rows where the debit/withdrawal column has a dollar amount.
 
         The table has columns like:
-        Date | Description | Withdrawal | Deposit | Balance
+        Date | Description | Debit/Withdrawal | Credit/Deposit | Balance
 
         EXTRACTION RULE:
-        • Withdrawal column has amount (e.g., $100.00)? → EXTRACT this row
-        • Withdrawal column is blank/empty? → SKIP this row completely
+        • Debit/withdrawal column has amount (e.g., $100.00)? → EXTRACT this row
+        • Debit/withdrawal column is blank/empty? → SKIP this row completely
 
         DO NOT EXTRACT:
-        ✗ Rows where Withdrawal is blank (even if Deposit has value)
-        ✗ INCOME DEPOSIT (Withdrawal blank)
-        ✗ INTEREST CREDIT (Withdrawal blank)
-        ✗ PAYROLL CREDIT (Withdrawal blank)
-        ✗ Any row with blank Withdrawal column
+        ✗ Rows where debit/withdrawal column is blank (even if credit/deposit has value)
+        ✗ INCOME DEPOSIT (debit/withdrawal blank)
+        ✗ INTEREST CREDIT (debit/withdrawal blank)
+        ✗ PAYROLL CREDIT (debit/withdrawal blank)
+        ✗ Any row with blank debit/withdrawal column
 
         EXTRACT ONLY:
-        ✓ Rows with dollar amount in Withdrawal column
-        ✓ PURCHASE (has Withdrawal amount)
-        ✓ WITHDRAWAL (has Withdrawal amount)
-        ✓ PAYMENT (has Withdrawal amount)
+        ✓ Rows with dollar amount in debit/withdrawal column
+        ✓ PURCHASE (has debit/withdrawal amount)
+        ✓ WITHDRAWAL (has debit/withdrawal amount)
+        ✓ PAYMENT (has debit/withdrawal amount)
 
-        VISUAL CHECK:
+        VISUAL CHECK (example with "Withdrawal"/"Deposit" column names):
         Date       | Description          | Withdrawal | Deposit | Balance
-        DD/MM/YYYY | STORE PURCHASE      | $XX.XX     |         | $YYYY.YY  ← EXTRACT (has Withdrawal)
-        DD/MM/YYYY | INCOME CREDIT       |            | $AAAA   | $BBBB.BB  ← SKIP (Withdrawal blank)
-        DD/MM/YYYY | ATM WITHDRAWAL      | $ZZZ.ZZ    |         | $CCCC.CC  ← EXTRACT (has Withdrawal)
+        DD/MM/YYYY | STORE PURCHASE      | $XX.XX     |         | $YYYY.YY  ← EXTRACT (has debit amount)
+        DD/MM/YYYY | INCOME CREDIT       |            | $AAAA   | $BBBB.BB  ← SKIP (debit blank)
+        DD/MM/YYYY | ATM WITHDRAWAL      | $ZZZ.ZZ    |         | $CCCC.CC  ← EXTRACT (has debit amount)
 
-        For each row with Withdrawal amount, extract:
+        For each row with debit/withdrawal amount, extract:
         - Transaction date (DD/MM/YYYY)
         - Description text
-        - Withdrawal amount (with $)
+        - Debit/withdrawal amount (with $)
 
         OUTPUT FORMAT:
         DOCUMENT_TYPE: BANK_STATEMENT
