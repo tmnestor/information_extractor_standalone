@@ -114,15 +114,40 @@ def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-
 
 
 def main():
-    """Test markdown extraction on image_003.png"""
-    image_path = "evaluation_data/images/image_003.png"
+    """Test markdown extraction on bank statement image"""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Extract bank statement table as markdown and filter withdrawals"
+    )
+    parser.add_argument(
+        "--image",
+        type=str,
+        default="evaluation_data/images/image_003.png",
+        help="Path to bank statement image (default: image_003.png)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="llama-3.2-11b-vision",
+        help="Model to use (default: llama-3.2-11b-vision)",
+    )
+    parser.add_argument(
+        "--parse",
+        action="store_true",
+        help="Parse and filter the extracted markdown to show withdrawal transactions only",
+    )
+
+    args = parser.parse_args()
+    image_path = args.image
 
     if not Path(image_path).exists():
         console.print(f"[red]Error: Image not found: {image_path}[/red]")
         return 1
 
     # Extract markdown table
-    markdown_table = extract_table_as_markdown(image_path)
+    console.print(f"\n[bold cyan]Processing: {image_path}[/bold cyan]")
+    markdown_table = extract_table_as_markdown(image_path, args.model)
 
     # Display the extracted markdown
     console.print("\n" + "=" * 80)
@@ -141,6 +166,30 @@ def main():
     console.print("[bold cyan]Raw Markdown (for copying):[/bold cyan]")
     console.print("=" * 80)
     console.print(markdown_table)
+
+    # Parse and filter if requested
+    if args.parse:
+        from common.markdown_table_parser import process_bank_statement_markdown
+
+        console.print("\n" + "=" * 80)
+        console.print("[bold cyan]Parsed & Filtered (Withdrawals Only):[/bold cyan]")
+        console.print("=" * 80)
+
+        result = process_bank_statement_markdown(markdown_table)
+
+        console.print("\n[green]TRANSACTION_DATES:[/green]")
+        console.print(f"  {result['TRANSACTION_DATES']}")
+
+        console.print("\n[green]LINE_ITEM_DESCRIPTIONS:[/green]")
+        console.print(f"  {result['LINE_ITEM_DESCRIPTIONS']}")
+
+        console.print("\n[green]TRANSACTION_AMOUNTS_PAID:[/green]")
+        console.print(f"  {result['TRANSACTION_AMOUNTS_PAID']}")
+
+        console.print("\n[cyan]Stats:[/cyan]")
+        console.print(f"  Total rows in table: {result['_total_rows']}")
+        console.print(f"  Withdrawal transactions: {result['_withdrawal_rows']}")
+        console.print(f"  Credit transactions filtered: {result['_filtered_out']}")
 
     return 0
 
