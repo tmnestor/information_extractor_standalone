@@ -374,7 +374,7 @@ class MultiTurnExtractorV2:
                 structure_type = line.split(":", 1)[1].replace("*", "").strip()
 
             # Column Headers (markdown bullet format)
-            elif "column headers:" in line_lower or line.startswith("COLUMN_HEADERS:"):
+            elif "column_headers:" in line_lower or line.startswith("COLUMN_HEADERS:"):
                 console.print(f"[yellow]  → Matched COLUMN_HEADERS line: '{line}'[/yellow]")
                 # Check if pipe-separated format on same line
                 if "|" in line:
