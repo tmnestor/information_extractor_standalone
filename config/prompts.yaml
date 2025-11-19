@@ -292,23 +292,46 @@ model_specific_document_instructions:
         10/05 | ATM WITHDRAWAL       | $146.72   |          | $16,306.10
         ✅ EXTRACT: Withdrawal=$146.72 (SAME description as row 7, still extract!)
 
-        ### STEP 3 - Extract only the ✅ rows
+        ### STEP 3 - Extract data from ✅ rows ONLY (keep lists synchronized!)
 
-        For each row you marked ✅ above:
-        1. Take the DATE → add to TRANSACTION_DATES
-        2. Take the DESCRIPTION → add to LINE_ITEM_DESCRIPTIONS
-        3. Take the AMOUNT from Withdrawal column → add to TRANSACTION_AMOUNTS_PAID
+        ⚠️ CRITICAL: Build all 3 lists from the SAME rows! ⚠️
 
-        Use " | " separator between items.
+        Go through ONLY the rows you marked ✅ above (where Withdrawal has amount).
+        For EACH ✅ row, extract ALL THREE pieces of data together:
 
-        ### STEP 4 - Before you output, verify:
+        Row marked ✅? → Extract:
+        1. DATE from that row → add to TRANSACTION_DATES list
+        2. DESCRIPTION from that row → add to LINE_ITEM_DESCRIPTIONS list
+        3. AMOUNT from Withdrawal column → add to TRANSACTION_AMOUNTS_PAID list
+
+        Row marked ❌? → Skip completely, do NOT add anything to any list!
+
+        Example - if you marked these rows ✅:
+        - Row 1 (03/05): Add "03/05/2025" AND "ONLINE PURCHASE" AND "$288.03"
+        - Row 2 (04/05): Add "04/05/2025" AND "EFTPOS PURCHASE" AND "$22.50"
+        - Row 3 (05/05): Add "05/05/2025" AND "EFTPOS PURCHASE" AND "$114.66"
+        - SKIP Row 4 (06/05 DIRECT CREDIT) - add NOTHING to any list!
+        - Row 5 (07/05): Add "07/05/2025" AND "ATM WITHDRAWAL" AND "$187.59"
+        - Row 6 (08/05): Add "08/05/2025" AND "EFTPOS PURCHASE" AND "$112.50"
+        - SKIP Row 7 (09/05 INTEREST) - add NOTHING to any list!
+        - Row 8 (10/05): Add "10/05/2025" AND "ATM WITHDRAWAL" AND "$146.72"
+
+        Result: ALL THREE LISTS have exactly 6 items (same count, same rows)
+
+        Use " | " separator between items in each list.
+
+        ### STEP 4 - Before you output, VERIFY ALL CHECKS:
 
         □ Did I check EVERY row in the table?
         □ Did I SKIP all rows where Withdrawal column is blank?
         □ Did I include ONLY rows where Withdrawal column has a $ amount?
-        □ Are DIRECT CREDIT SALARY and INTEREST PAYMENT excluded?
+        □ Are DIRECT CREDIT SALARY and INTEREST PAYMENT completely excluded from ALL lists?
         □ Did I extract ALL rows with amounts, even if descriptions repeat?
         □ Do my 3 lists have the SAME NUMBER of items?
+        □ Are 06/05/2025 and 09/05/2025 EXCLUDED from TRANSACTION_DATES?
+        □ Are "DIRECT CREDIT SALARY" and "INTEREST PAYMENT" EXCLUDED from LINE_ITEM_DESCRIPTIONS?
+
+        If you extracted DIRECT CREDIT SALARY or INTEREST PAYMENT in ANY field → ERROR, remove them!
 
         ### OUTPUT FORMAT:
 
