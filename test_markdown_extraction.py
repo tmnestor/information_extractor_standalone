@@ -98,21 +98,29 @@ def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-
     # Load image
     image = Image.open(image_path)
 
-    # Create prompt
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "image"},
-                {"type": "text", "text": table_prompt},
-            ],
-        }
-    ]
-
     # Get response
     console.print(f"\n[cyan]Extracting table from: {image_path}[/cyan]")
-    input_text = processor.apply_chat_template(messages, add_generation_prompt=True)
-    inputs = processor(image, input_text, return_tensors="pt").to(model.device)
+
+    # Create prompt based on model type
+    if "llama" in model_name.lower():
+        # Llama format: structured messages with content list
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image"},
+                    {"type": "text", "text": table_prompt},
+                ],
+            }
+        ]
+        input_text = processor.apply_chat_template(messages, add_generation_prompt=True)
+        inputs = processor(image, input_text, return_tensors="pt").to(model.device)
+    elif "internvl" in model_name.lower():
+        # InternVL3 format: simple text with <image> placeholder
+        prompt_with_image = f"<image>\n{table_prompt}"
+        inputs = processor(image, prompt_with_image, return_tensors="pt").to(model.device)
+    else:
+        raise ValueError(f"Unsupported model: {model_name}")
 
     output = model.generate(**inputs, max_new_tokens=2000, do_sample=False)
     response = processor.decode(output[0], skip_special_tokens=True)
