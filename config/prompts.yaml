@@ -295,27 +295,18 @@ structure_detection_template: |
 
   IMPORTANT: Use the EXACT header text from the image - these will be used as literals in subsequent turns!
 
-  TASK: Count transaction rows
-
-  - Count the number of entries in the rightmost column (Balance column)
-  - This equals the number of transaction rows
-  - Do NOT count the header row
-  - Example: 40 balance entries = 40 transaction rows
-
   ═══════════════════════════════════════════════════════════════════════════
-  OUTPUT FORMAT (DO NOT EXTRACT TABLE DATA - ONLY METADATA)
+  OUTPUT FORMAT (ONLY DOCUMENT TYPE AND COLUMN HEADERS)
   ═══════════════════════════════════════════════════════════════════════════
 
   ⚠️ CRITICAL: Output PLAIN TEXT only - NO markdown formatting, NO bold (**), NO asterisks!
 
   DOCUMENT_TYPE: BANK_STATEMENT
   COLUMN_HEADERS: [header1] | [header2] | [header3] | [header4] | [header5]
-  ESTIMATED_ROWS: [number]
 
   Example output (PLAIN TEXT, use PIPE | separators, NO markdown **bold**):
   DOCUMENT_TYPE: BANK_STATEMENT
   COLUMN_HEADERS: Date | Description | Withdrawal | Deposit | Balance
-  ESTIMATED_ROWS: 40
 
   ⚠️ IMPORTANT:
   - Use pipe | characters to separate headers, NOT commas!
@@ -323,9 +314,9 @@ structure_detection_template: |
   - Do NOT use asterisks around the output
   - Plain text only!
 
-  ⚠️ DO NOT EXTRACT THE MARKDOWN TABLE - That will be done in Turn 1!
-  ⚠️ Output ONLY the metadata above (document type, column headers, row count)
-  ⚠️ NO structure type detection - that's not needed!
+  ⚠️ DO NOT extract the markdown table - that will be done in Turn 1!
+  ⚠️ DO NOT count rows or detect structure type - not needed!
+  ⚠️ Output ONLY document type and column headers!
 
 # Column extraction - Extract values from a specific column
 column_extraction_template: |

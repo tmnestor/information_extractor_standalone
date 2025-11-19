@@ -140,13 +140,11 @@ class MultiTurnExtractorV2:
 
         console.print(f"\n[bold cyan]Multi-Turn Extraction (3-Turn):[/bold cyan] {image_path.name}")
 
-        # Turn 0: Extract FULL markdown table + detect structure
-        console.print("[cyan]Turn 0:[/cyan] Extracting full markdown table + detecting structure...")
+        # Turn 0: Detect document type and column headers only
+        console.print("[cyan]Turn 0:[/cyan] Detecting document type and column headers...")
         structure, turn0_response = self._detect_structure(image_path)
 
-        console.print(f"  Structure: [green]{structure.structure_type}[/green]")
-        console.print(f"  Columns: [green]{' | '.join(structure.column_headers)}[/green]")
-        console.print(f"  Estimated rows: [green]{structure.estimated_rows}[/green]")
+        console.print(f"  Column headers: [green]{' | '.join(structure.column_headers)}[/green]")
 
         # Map column headers to semantic types
         structure = self._map_column_headers(structure)
@@ -376,7 +374,8 @@ class MultiTurnExtractorV2:
                 # Check if pipe-separated format on same line
                 if "|" in line:
                     headers_str = line.split(":", 1)[1].strip()
-                    column_headers = [h.strip() for h in headers_str.split("|")]
+                    # Strip markdown asterisks from each header
+                    column_headers = [h.strip().replace("*", "") for h in headers_str.split("|")]
                 else:
                     # Markdown bullet format follows on next lines
                     in_headers_section = True
