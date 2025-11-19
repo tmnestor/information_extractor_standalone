@@ -323,10 +323,9 @@ class MultiTurnExtractorV2:
         """
         Parse structure detection response.
 
-        Expected format:
-            STRUCTURE_TYPE: flat
-            COLUMN_HEADERS: Date | Description | Debit | Credit | Balance
-            ESTIMATED_ROWS: 40
+        Handles both formats:
+        1. Plain: STRUCTURE_TYPE: flat, COLUMN_HEADERS: Date | Description | ...
+        2. Markdown: **Structure Type:** flat, * Date, * Description, ...
 
         Args:
             response_text: Raw LLM output
@@ -339,19 +338,44 @@ class MultiTurnExtractorV2:
         structure_type = "flat"
         column_headers = []
         estimated_rows = 0
+        in_headers_section = False
 
         for line in lines:
             line = line.strip()
 
-            if line.startswith("STRUCTURE_TYPE:"):
-                structure_type = line.split(":", 1)[1].strip()
-            elif line.startswith("COLUMN_HEADERS:"):
-                headers_str = line.split(":", 1)[1].strip()
-                column_headers = [h.strip() for h in headers_str.split("|")]
-            elif line.startswith("ESTIMATED_ROWS:"):
+            # Remove markdown bold formatting for easier parsing
+            line_lower = line.lower().replace("*", "").strip()
+
+            # Structure Type
+            if "structure type:" in line_lower or line.startswith("STRUCTURE_TYPE:"):
+                structure_type = line.split(":", 1)[1].replace("*", "").strip()
+
+            # Column Headers (markdown bullet format)
+            elif "column headers:" in line_lower or line.startswith("COLUMN_HEADERS:"):
+                # Check if pipe-separated format on same line
+                if "|" in line:
+                    headers_str = line.split(":", 1)[1].strip()
+                    column_headers = [h.strip() for h in headers_str.split("|")]
+                else:
+                    # Markdown bullet format follows on next lines
+                    in_headers_section = True
+                continue
+
+            # Parse bullet point headers
+            elif in_headers_section:
+                if line.startswith("*"):
+                    header = line[1:].strip()
+                    column_headers.append(header)
+                elif line.startswith("**") or not line:
+                    # End of headers section
+                    in_headers_section = False
+
+            # Estimated Rows
+            elif "estimated rows:" in line_lower or line.startswith("ESTIMATED_ROWS:"):
                 try:
-                    estimated_rows = int(line.split(":", 1)[1].strip())
-                except ValueError:
+                    num_str = line.split(":", 1)[1].replace("*", "").strip()
+                    estimated_rows = int(num_str)
+                except (ValueError, IndexError):
                     estimated_rows = 0
 
         return TableStructure(
