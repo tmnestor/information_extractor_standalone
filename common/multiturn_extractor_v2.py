@@ -307,10 +307,10 @@ class MultiTurnExtractorV2:
         # Get response
         response = self.llm.invoke([message])
 
-        # DEBUG: Show raw Turn 0 response
-        console.print("\n[yellow]DEBUG - Turn 0 Raw Response:[/yellow]")
+        # DEBUG: Show raw Turn 0 response (full table)
+        console.print("\n[yellow]DEBUG - Turn 0 Raw Response (FULL):[/yellow]")
         console.print("[dim]" + "=" * 80 + "[/dim]")
-        console.print(response.content[:1000])  # First 1000 chars
+        console.print(response.content)  # Show complete response
         console.print("[dim]" + "=" * 80 + "[/dim]\n")
 
         # Parse response
