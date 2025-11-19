@@ -116,14 +116,26 @@ def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-
         input_text = processor.apply_chat_template(messages, add_generation_prompt=True)
         inputs = processor(image, input_text, return_tensors="pt").to(model.device)
     elif "internvl" in model_name.lower():
-        # InternVL3 format: simple text with <image> placeholder
-        prompt_with_image = f"<image>\n{table_prompt}"
-        inputs = processor(image, prompt_with_image, return_tensors="pt").to(model.device)
+        # InternVL3 format: uses .chat() method with pixel_values
+        from common.langchain_llm import VisionLanguageModel
+
+        # Create temporary VLM wrapper to use preprocessing
+        temp_llm = VisionLanguageModel(
+            model=model,
+            processor=processor,
+            max_new_tokens=2000,
+            is_llama=False
+        )
+
+        # Use InternVL3 preprocessing and generation
+        response = temp_llm._generate_internvl(table_prompt, image, max_new_tokens=2000, do_sample=False)
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
-    output = model.generate(**inputs, max_new_tokens=2000, do_sample=False)
-    response = processor.decode(output[0], skip_special_tokens=True)
+    # For Llama, decode the output; for InternVL3, response is already text
+    if "llama" in model_name.lower():
+        output = model.generate(**inputs, max_new_tokens=2000, do_sample=False)
+        response = processor.decode(output[0], skip_special_tokens=True)
 
     # Extract just the markdown table from response
     # Response format: <prompt>assistant\n<markdown table>
