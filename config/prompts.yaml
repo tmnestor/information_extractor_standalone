@@ -102,6 +102,14 @@ table_extraction_template: |
   - If a transaction increases the balance, put the amount in Deposit column (leave Withdrawal empty)
   - Use empty string for the unused column (do not put the amount in both columns)
 
+  CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
+  - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
+  - Create a SEPARATE row for EACH transaction under that date header
+  - Repeat the same date in the Date column for each transaction
+  - Each transaction gets its own row with: unique description, unique amount, unique balance
+  - Do NOT combine multiple transactions into a single row
+  - Count the number of balances shown = number of rows to create for that date
+
   Output ONLY the markdown table, nothing else.
   Use this markdown table format:
 
