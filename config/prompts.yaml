@@ -98,9 +98,10 @@ table_extraction_template: |
 
   CRITICAL COLUMN RULES:
   - Each row must have EITHER Withdrawal OR Deposit filled, NEVER both
-  - If a transaction reduces the balance, put the amount in Withdrawal column (leave Deposit empty)
-  - If a transaction increases the balance, put the amount in Deposit column (leave Withdrawal empty)
-  - Use empty string for the unused column (do not put the amount in both columns)
+  - If a transaction reduces the balance, put the amount in Withdrawal column (put "NOT_FOUND" in Deposit)
+  - If a transaction increases the balance, put the amount in Deposit column (put "NOT_FOUND" in Withdrawal)
+  - Use "NOT_FOUND" for the unused column (do not use empty string or blank)
+  - NEVER put the same amount in both Withdrawal and Deposit columns
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -135,9 +136,10 @@ structure_detection_template: |
 
   CRITICAL COLUMN RULES:
   - Each row must have EITHER Withdrawal OR Deposit filled, NEVER both
-  - If a transaction reduces the balance, put the amount in Withdrawal column (leave Deposit empty)
-  - If a transaction increases the balance, put the amount in Deposit column (leave Withdrawal empty)
-  - Use empty string for the unused column (do not put the amount in both columns)
+  - If a transaction reduces the balance, put the amount in Withdrawal column (put "NOT_FOUND" in Deposit)
+  - If a transaction increases the balance, put the amount in Deposit column (put "NOT_FOUND" in Withdrawal)
+  - Use "NOT_FOUND" for the unused column (do not use empty string or blank)
+  - NEVER put the same amount in both Withdrawal and Deposit columns
 
   CRITICAL ROW RULES FOR DATE-GROUPED STATEMENTS:
   - DETECTION: If a date header has multiple balance amounts shown on the far right, multiple transactions exist for that date
@@ -234,32 +236,35 @@ turn1_3column_template: |
   RULES:
   - Keep ALL rows (do not remove any rows yet)
   - Keep ONLY the 3 specified columns (remove all other columns)
-  - Preserve the exact values from the original table
+  - Preserve the EXACT values from the original table (do NOT modify any values)
   - Maintain the same row order
-  - If "{debit_column}" is empty/blank in a row, keep the row but show empty value
+  - If "{debit_column}" shows "NOT_FOUND" in a row, keep "NOT_FOUND" exactly as is
+  - Do NOT change "NOT_FOUND" to empty string or any other value
+  - Do NOT change dollar amounts or descriptions
 
   Output the 3-column markdown table:
   | {date_column} | {description_column} | {debit_column} |
   |---------------|----------------------|----------------|
-  | ...all rows from original table... |
+  | ...all rows from original table with exact values... |
 
 # Turn 2: Remove empty debit rows (withdrawals only)
 turn2_filter_debits_template: |
   I previously created a 3-column markdown table with columns: {date_column}, {description_column}, {debit_column}.
 
-  Now, remove rows where the "{debit_column}" column is empty or blank.
-  Keep ONLY rows that have a value in the "{debit_column}" column.
+  Now, remove rows where the "{debit_column}" column is "NOT_FOUND".
+  Keep ONLY rows that have a dollar amount in the "{debit_column}" column.
 
   RULES:
-  - Remove rows where "{debit_column}" is empty/blank (these are deposits/credits)
-  - Keep rows where "{debit_column}" has a value (these are withdrawals/debits)
+  - Remove rows where "{debit_column}" is "NOT_FOUND" (these are deposits/credits)
+  - Keep rows where "{debit_column}" has a dollar amount like $123.45 (these are withdrawals/debits)
   - Do not modify the column headers or values
   - Maintain the same row order for kept rows
+  - Do NOT change "NOT_FOUND" to any other value
 
   Output the filtered markdown table (withdrawals only):
   | {date_column} | {description_column} | {debit_column} |
   |---------------|----------------------|----------------|
-  | ...only rows with debit values... |
+  | ...only rows with debit dollar amounts... |
 
 # Field format guidelines
 field_format_guidelines:
