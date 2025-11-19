@@ -96,6 +96,12 @@ table_extraction_template: |
   - All transaction rows (do not skip any rows)
   - Preserve exact spacing and alignment
 
+  CRITICAL COLUMN RULES:
+  - Each row must have EITHER Withdrawal OR Deposit filled, NEVER both
+  - If a transaction reduces the balance, put the amount in Withdrawal column (leave Deposit empty)
+  - If a transaction increases the balance, put the amount in Deposit column (leave Withdrawal empty)
+  - Use empty string for the unused column (do not put the amount in both columns)
+
   Output ONLY the markdown table, nothing else.
   Use this markdown table format:
 
