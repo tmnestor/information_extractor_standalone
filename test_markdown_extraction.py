@@ -47,13 +47,27 @@ def load_model(model_name: str = "llama-3.2-11b-vision"):
     ) as progress:
         task = progress.add_task(f"Loading {model_name}...", total=None)
 
-        model, processor = load_llama_model(
-            model_path=model_config.model_id,
-            use_quantization=False,
-            device_map=model_config.device_map,
-            torch_dtype=model_config.torch_dtype,
-            max_new_tokens=model_config.max_new_tokens,
-        )
+        if "llama" in model_name.lower():
+            model, processor = load_llama_model(
+                model_path=model_config.model_id,
+                use_quantization=False,
+                device_map=model_config.device_map,
+                torch_dtype=model_config.torch_dtype,
+                max_new_tokens=model_config.max_new_tokens,
+            )
+        elif "internvl" in model_name.lower():
+            from common.internvl3_model_loader import load_internvl3_model
+
+            model, tokenizer = load_internvl3_model(
+                model_path=model_config.model_id,
+                use_quantization=False,
+                device_map=model_config.device_map,
+                torch_dtype=model_config.torch_dtype,
+                max_new_tokens=model_config.max_new_tokens,
+            )
+            processor = tokenizer  # InternVL3 uses tokenizer as processor
+        else:
+            raise ValueError(f"Unsupported model: {model_name}")
 
         progress.update(task, completed=True)
 
