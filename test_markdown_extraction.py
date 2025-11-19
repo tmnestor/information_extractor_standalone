@@ -144,6 +144,15 @@ def extract_table_as_markdown(image_path: str, model_name: str = "llama-3.2-11b-
     else:
         markdown_table = response.strip()
 
+    # Remove code fence markers if present (```markdown ... ```)
+    if markdown_table.startswith("```markdown"):
+        markdown_table = markdown_table[len("```markdown"):].strip()
+    elif markdown_table.startswith("```"):
+        markdown_table = markdown_table[3:].strip()
+
+    if markdown_table.endswith("```"):
+        markdown_table = markdown_table[:-3].strip()
+
     return markdown_table
 
 
