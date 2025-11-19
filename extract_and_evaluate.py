@@ -109,6 +109,28 @@ def detect_document_type(image_path: Path, llm) -> str:
     return detection_config["settings"]["fallback_type"].lower()
 
 
+def display_extraction_prompt(prompt_text: str, prompt_type: str = "Extraction") -> None:
+    """
+    Display extraction prompt in a formatted panel.
+
+    Args:
+        prompt_text: The actual prompt text being sent to the model
+        prompt_type: Type of prompt (e.g., "Extraction", "Detection", "Classification")
+    """
+    # Truncate very long prompts for display
+    max_display_length = 2000
+    display_text = prompt_text if len(prompt_text) <= max_display_length else (
+        prompt_text[:max_display_length] + f"\n\n... (truncated, total length: {len(prompt_text)} chars)"
+    )
+
+    console.print(Panel(
+        display_text,
+        title=f"[bold yellow]{prompt_type} Prompt[/bold yellow]",
+        border_style="yellow",
+        expand=False,
+    ))
+
+
 def parse_extraction_output(text: str) -> Dict[str, str]:
     """
     Parse LLM output text into structured field dictionary.
@@ -258,6 +280,9 @@ def extract_with_single_pass(image_path: Path, llm, model_name: str, structure_t
                     text_parts.append(item)
 
     prompt_text = "\n\n".join(text_parts)
+
+    # Display the actual prompt being used
+    display_extraction_prompt(prompt_text, prompt_type="Bank Statement Extraction")
 
     # Invoke model with image
     with console.status("[bold green]Extracting data..."):
@@ -630,6 +655,11 @@ def process_document(
                         text_parts.append(item)
 
         prompt_text = "\n\n".join(text_parts)
+
+        # Display the actual prompt being used
+        if show_extraction:
+            doc_type_title = document_type.replace("_", " ").title()
+            display_extraction_prompt(prompt_text, prompt_type=f"{doc_type_title} Extraction")
 
         with console.status("[bold green]Extracting data..."):
             # Use convenience method that handles image formatting
