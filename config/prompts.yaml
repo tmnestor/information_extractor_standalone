@@ -224,126 +224,81 @@ model_specific_document_instructions:
         TOTAL_AMOUNT: [Final total/amount paid with $ symbol or NOT_FOUND]
 
       bank_statement: |
-        ## STEP-BY-STEP BANK STATEMENT EXTRACTION:
+        ═══════════════════════════════════════════════════════════════════════════
+        ⚠️⚠️⚠️ CRITICAL RULE - READ THIS FIRST ⚠️⚠️⚠️
+        ═══════════════════════════════════════════════════════════════════════════
 
-        ⚠️ CRITICAL REQUIREMENT ⚠️
-        Extract ONLY DEBIT/WITHDRAWAL transactions (money OUT) for expense tracking.
-        IGNORE ALL deposits and credits (money IN) - we only need expenses.
+        For 5-column bank statements (Date | Description | Withdrawal | Deposit | Balance):
 
-        ### STEP 1 - LOCATE TRANSACTION TABLE:
-        Focus on the main transaction table (usually center/body area).
-        Common column layouts:
-        - 5-column: Date | Description | Withdrawal | Deposit | Balance
-        - 5-column: Date | Description | Debit | Credit | Balance
-        - 4-column: Date | Description | Amount | Balance (withdrawals have "-" prefix, deposits have "+" prefix)
-        - 3-column: Date | Description | Amount (withdrawals negative, deposits positive)
+        ✅ EXTRACT THIS ROW if: Withdrawal column HAS A DOLLAR AMOUNT ($100.00)
+        ❌ SKIP THIS ROW if: Withdrawal column is BLANK/EMPTY (even if Deposit has value)
 
-        IMPORTANT: "Withdrawal" = "Debit" (money OUT) | "Deposit" = "Credit" (money IN)
-        Ignore: Headers, footers, summary sections, advertisements
+        BLANK Withdrawal column = CREDIT/DEPOSIT = Money IN = DO NOT EXTRACT!
 
-        ### STEP 2 - UNDERSTAND CREDITS vs DEBITS:
+        Examples of rows to SKIP (Withdrawal column blank):
+        - DIRECT CREDIT SALARY
+        - PAYROLL DEPOSIT
+        - INTEREST PAYMENT
+        - TAX REFUND
+        - Any row where Withdrawal is blank/empty/dash
 
-        **DEBIT/WITHDRAWAL = Money OUT (EXTRACT THESE):**
-        - Shows in "Debit" or "Withdrawal" column
-        - OR has negative sign: "-$100.00" or "-100.00"
-        - Causes balance to DECREASE
-        - Examples: Purchases, ATM withdrawals, fees, bill payments, transfers OUT
-        - Common transaction types:
-          * EFTPOS PURCHASE
-          * ATM WITHDRAWAL
-          * DIRECT DEBIT
-          * ONLINE PURCHASE
-          * CARD PAYMENT
-          * BANK FEE
-          * TRANSFER OUT
-          * BILL PAYMENT
+        ═══════════════════════════════════════════════════════════════════════════
 
-        **CREDIT/DEPOSIT = Money IN (SKIP THESE ENTIRELY):**
-        - Shows in "Credit" or "Deposit" column
-        - Debit column is EMPTY (blank/space) or shows "-" (dash/hyphen)
-        - OR has positive sign: "+$500.00" or no sign for deposits
-        - Causes balance to INCREASE
-        - Examples: Salary, deposits, transfers IN, interest, refunds
-        - Common transaction types to SKIP:
-          * DIRECT CREDIT SALARY
-          * DEPOSIT
-          * TRANSFER IN
-          * INTEREST PAYMENT
-          * REFUND
-          * CREDIT ADJUSTMENT
+        ## EXTRACTION PROCESS:
 
-        **VISUAL EXAMPLES - 5 Column Statement:**
+        ### STEP 1 - Find the transaction table
+        Look for the main table with columns like:
+        - Date | Description | Withdrawal | Deposit | Balance
+        - Date | Description | Debit | Credit | Balance
 
-        Example A (using "Withdrawal" and "Deposit" headers, with blank spaces):
-        Date       | Description           | Withdrawal | Deposit  | Balance
-        01/03/2024 | GROCERIES STORE      | $45.20     |          | $2,154.80  ← EXTRACT (Withdrawal has amount)
-        02/03/2024 | PAYROLL DEPOSIT      |            | $2,800.00| $4,954.80  ← SKIP (Withdrawal blank, Deposit has value)
-        03/03/2024 | FUEL STATION         | $67.30     |          | $4,887.50  ← EXTRACT (Withdrawal has amount)
-        04/03/2024 | TAX REFUND           |            | $156.00  | $5,043.50  ← SKIP (Withdrawal blank, Deposit has value)
+        Note: "Withdrawal" = "Debit" (both mean money OUT)
+        Note: "Deposit" = "Credit" (both mean money IN)
 
-        Example B (using "Debit" and "Credit" headers, with "-" dashes):
-        Date       | Description           | Debit    | Credit   | Balance
-        15/06/2024 | RESTAURANT           | $38.50   | -        | $1,461.50  ← EXTRACT (Debit has amount)
-        16/06/2024 | WAGES PAID           | -        | $1,950.00| $3,411.50  ← SKIP (Debit dash, Credit has value)
-        17/06/2024 | PHARMACY             | $24.80   | -        | $3,386.70  ← EXTRACT (Debit has amount)
-        18/06/2024 | DIVIDEND INCOME      | -        | $42.30   | $3,429.00  ← SKIP (Debit dash, Credit has value)
+        ### STEP 2 - Go through each row and apply THE CRITICAL RULE
 
-        ⚠️ COMMON MISTAKES TO AVOID:
-        ❌ DO NOT extract rows where Withdrawal/Debit column is blank
-        ❌ DO NOT extract "DIRECT CREDIT SALARY" - this is a DEPOSIT (Withdrawal column blank)
-        ❌ DO NOT extract "INTEREST PAYMENT" - this is a DEPOSIT (Withdrawal column blank)
-        ✅ ONLY extract rows where Withdrawal/Debit column has a dollar amount
+        For EACH transaction row, look at the Withdrawal/Debit column:
 
-        ### STEP 3 - IDENTIFY DEBIT ROWS (Use ALL these checks):
+        Row 1: Date | Description | Withdrawal | Deposit | Balance
+        ───────────────────────────────────────────────────────────────────────
+        03/05 | ONLINE PURCHASE      | $288.03   |          | $13,387.44
+        ✅ EXTRACT: Withdrawal=$288.03 (column has amount)
 
-        For EACH transaction row, verify it's a DEBIT by checking:
+        04/05 | EFTPOS PURCHASE      | $22.50    |          | $13,364.94
+        ✅ EXTRACT: Withdrawal=$22.50 (column has amount)
 
-        ✓ CHECK 1 - Column Value & Sign:
+        05/05 | DIRECT CREDIT SALARY |           | $3497.47 | $16,862.41
+        ❌ SKIP: Withdrawal=BLANK (this is money IN, not OUT)
 
-        For 5-COLUMN statements (Date | Description | Withdrawal/Debit | Deposit/Credit | Balance):
-        - Withdrawal/Debit column has AMOUNT (e.g., "$100.00", "100.00")? → WITHDRAWAL (extract)
-        - Withdrawal/Debit column is EMPTY (blank/space) or has "-" dash? → DEPOSIT (skip - money IN)
-        - Deposit/Credit column has AMOUNT? → DEPOSIT (skip - money IN)
+        07/05 | ATM WITHDRAWAL       | $187.59   |          | $16,674.82
+        ✅ EXTRACT: Withdrawal=$187.59 (column has amount)
 
-        CRITICAL: If Withdrawal column is blank but Deposit column has value → SKIP THAT ROW!
+        09/05 | INTEREST PAYMENT     |           | $5.16    | $16,679.98
+        ❌ SKIP: Withdrawal=BLANK (this is money IN, not OUT)
 
-        For 3-4 COLUMN statements with single amount column:
-        - Amount has "-" prefix (e.g., "-$100.00")? → DEBIT (extract)
-        - Amount has "+" prefix or no sign (e.g., "+$500.00")? → CREDIT (skip)
-        - Negative number (e.g., -100.00)? → DEBIT (extract)
-        - Positive number (e.g., +100.00, 100.00)? → CREDIT (skip)
+        ### STEP 3 - Extract only the ✅ rows
 
-        ✓ CHECK 2 - Balance Movement:
-        - Balance DECREASED compared to previous row? → DEBIT (extract)
-        - Balance INCREASED compared to previous row? → CREDIT (skip)
+        For each row you marked ✅ above:
+        1. Take the DATE → add to TRANSACTION_DATES
+        2. Take the DESCRIPTION → add to LINE_ITEM_DESCRIPTIONS
+        3. Take the AMOUNT from Withdrawal column → add to TRANSACTION_AMOUNTS_PAID
 
-        ✓ CHECK 3 - Description Keywords:
-        - DEBIT indicators: withdrawal, purchase, payment, ATM, EFTPOS, fee, charge, debit
-        - CREDIT indicators: salary, deposit, credit, interest, transfer in, refund
+        Use " | " separator between items.
 
-        ✓ CHECK 4 - Transaction Type:
-        - Expense-related (buy goods/services, withdraw cash, pay bills)? → DEBIT
-        - Income-related (receive money, get paid, deposits)? → CREDIT
+        ### STEP 4 - Before you output, verify:
 
-        ### STEP 4 - EXTRACT DEBIT ROWS ONLY:
+        □ Did I check EVERY row in the table?
+        □ Did I SKIP all rows where Withdrawal column is blank?
+        □ Did I include ONLY rows where Withdrawal column has a $ amount?
+        □ Are DIRECT CREDIT SALARY and INTEREST PAYMENT excluded?
+        □ Do my 3 lists have the SAME NUMBER of items?
 
-        For EACH row that passes ALL debit checks above:
-        1. Extract DATE (DD/MM/YYYY format)
-        2. Extract DESCRIPTION (exact text from description column)
-        3. Extract AMOUNT (with $ symbol, from debit/withdrawal column)
-        4. Add to output lists with " | " separator
+        ### OUTPUT FORMAT:
 
-        ⚠️ DOUBLE-CHECK: Count your extracted transactions
-        - Only DEBIT/WITHDRAWAL transactions should be in your output
-        - Verify each transaction caused balance to DECREASE
-        - Verify NO salary/deposit/credit transactions are included
-
-        OUTPUT FORMAT:
         DOCUMENT_TYPE: BANK_STATEMENT
-        STATEMENT_DATE_RANGE: [earliest transaction date to latest transaction date]
-        LINE_ITEM_DESCRIPTIONS: [debit_description1 | debit_description2 | etc.]
-        TRANSACTION_DATES: [DD/MM/YYYY | DD/MM/YYYY | etc.]
-        TRANSACTION_AMOUNTS_PAID: [$amount1 | $amount2 | etc.]
+        STATEMENT_DATE_RANGE: [first date to last date in DD/MM/YYYY format]
+        LINE_ITEM_DESCRIPTIONS: [description1 | description2 | description3]
+        TRANSACTION_DATES: [DD/MM/YYYY | DD/MM/YYYY | DD/MM/YYYY]
+        TRANSACTION_AMOUNTS_PAID: [$amount1 | $amount2 | $amount3]
 
     # Minimal variant - ultra-simple direct approach
     minimal:
