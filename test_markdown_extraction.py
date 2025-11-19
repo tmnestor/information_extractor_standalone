@@ -203,7 +203,27 @@ def main():
 
     # Parse and filter if requested
     if args.parse:
-        from common.markdown_table_parser import process_bank_statement_markdown
+        from common.markdown_table_parser import (
+            parse_markdown_table,
+            process_bank_statement_markdown,
+        )
+
+        # DEBUG: Show raw parsed rows to diagnose parsing issues
+        console.print("\n" + "=" * 80)
+        console.print("[bold yellow]DEBUG: Raw Parsed Rows (First 3):[/bold yellow]")
+        console.print("=" * 80)
+
+        rows = parse_markdown_table(markdown_table)
+        console.print(f"\n[cyan]Total rows parsed: {len(rows)}[/cyan]")
+
+        for i, row in enumerate(rows[:3]):
+            console.print(f"\n[yellow]Row {i}:[/yellow]")
+            for key, value in row.items():
+                console.print(f"  '{key}': '{value}'")
+
+        # Show what headers were detected
+        if rows:
+            console.print(f"\n[cyan]Detected headers: {list(rows[0].keys())}[/cyan]")
 
         console.print("\n" + "=" * 80)
         console.print("[bold cyan]Parsed & Filtered (Withdrawals Only):[/bold cyan]")
