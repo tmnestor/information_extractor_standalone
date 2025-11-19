@@ -381,42 +381,121 @@ turn1_3column_template: |
   NOW extract the FULL transaction table from the bank statement image.
   Use the EXACT column names I identified above as the literal column headers.
 
-  🚨🚨🚨 CRITICAL WARNING 🚨🚨🚨
+  🚨🚨🚨 CRITICAL WARNING FOR LONG TABLES 🚨🚨🚨
 
-  YOU HAVE A SYSTEMATIC ERROR: Copying Balance column into the debit/credit columns!
+  YOU HAVE A SYSTEMATIC ERROR IN LONG TABLES (20+ rows):
+  1. You start CORRECTLY for the first 5-10 rows
+  2. Then you LOSE TRACK of column positions halfway through
+  3. You start putting DEBITS in the Credit/Deposit column
+  4. You start REPEATING the same Balance value for multiple rows
 
-  ❌ WRONG - You keep doing this:
-  | {date_column} | {description_column} | $100.00 | $5000.00 | $5000.00 |
-                                                     ↑ {debit_column}  ↑ Balance
-  Problem: $5000.00 in BOTH columns = you copied Balance!
+  ❌ WRONG - This is what you do halfway through long tables:
+  | 01/09/2025 | DD INSURANCE ACME... | NOT_FOUND | $43405.77 | $51511.48 |
+  | 01/09/2025 | Auto Payment UTILITIES... | NOT_FOUND | $43440.81 | $51511.48 |
+  | 01/09/2025 | BPAY Payment... | NOT_FOUND | $43708.31 | $51511.48 |
+                                                        ↑ These are DEBITS but in Credit column!
+                                                                      ↑ Same Balance repeated!
 
-  ✅ CORRECT:
-  | {date_column} | {description_column} | $100.00 | NOT_FOUND | $5000.00 |
-                                                     ↑ Write "NOT_FOUND" for empty cells!
+  ✅ CORRECT - What you should do:
+  | 01/09/2025 | DD INSURANCE ACME... | $43405.77 | NOT_FOUND | $8105.71 |
+  | 01/09/2025 | Auto Payment UTILITIES... | $43440.81 | NOT_FOUND | $7662.90 |
+  | 01/09/2025 | BPAY Payment... | $43708.31 | NOT_FOUND | $3954.59 |
+                                       ↑ Debits in Withdrawal column!
+                                                            ↑ DIFFERENT Balance values!
 
-  CRITICAL EXTRACTION RULES:
+  ═══════════════════════════════════════════════════════════════════════════
+  STEP-BY-STEP ROW EXTRACTION PROCESS (DO THIS FOR EVERY SINGLE ROW!)
+  ═══════════════════════════════════════════════════════════════════════════
 
-  ⚠️ RULE 1: Read by POSITION - empty cells OCCUPY SPACE!
-  - Identify FIXED column POSITIONS from headers (left→right)
-  - "{debit_column}" is ALWAYS in the same position every row
-  - Credit/deposit is ALWAYS in the same position every row
-  - Balance is ALWAYS in the same position every row
-  - Empty cell? → Write "NOT_FOUND" (don't skip to next value!)
+  For EACH row in the table, follow this exact checklist:
 
-  ⚠️ RULE 2: NEVER copy Balance into "{debit_column}" or credit columns!
-  - SELF-CHECK every row: Is "{debit_column}" value = Balance value?
-  - If YES → ERROR! Replace "{debit_column}" with "NOT_FOUND"
-  - Is credit/deposit value = Balance value?
-  - If YES → ERROR! Replace credit/deposit with "NOT_FOUND"
+  1️⃣ IDENTIFY TRANSACTION TYPE from description:
+     - Is this a PAYMENT/WITHDRAWAL/DEBIT? (EFTPOS, ATM, BPAY, Direct Debit, Mortgage, Insurance, Utilities, Purchase)
+     - OR is this INCOME/DEPOSIT/CREDIT? (Salary, Direct Credit, Interest, Dividend, Refund)
 
-  ⚠️ RULE 3: Each transaction is EITHER debit OR credit (not both)
-  - If "{debit_column}" has amount → write "NOT_FOUND" in credit column
-  - If credit has amount → write "NOT_FOUND" in "{debit_column}" column
+  2️⃣ LOCATE THE AMOUNT in the correct column:
+     - If PAYMENT/WITHDRAWAL → amount is in "{debit_column}" column (usually column 3)
+     - If INCOME/DEPOSIT → amount is in "Credit/Deposit" column (usually column 4)
+     - DO NOT move the amount to a different column!
+
+  3️⃣ VERIFY COLUMN POSITIONS (count from left):
+     - Column 1: Date
+     - Column 2: Description
+     - Column 3: "{debit_column}" (withdrawals/debits)
+     - Column 4: Credit/Deposit (deposits/credits)
+     - Column 5: Balance
+     - THESE POSITIONS NEVER CHANGE - even if a cell is empty!
+
+  4️⃣ SELF-CHECK BEFORE WRITING THIS ROW:
+     ❓ Q1: "Is the amount I'm putting in '{debit_column}' the SAME as the Balance?"
+        → If YES: STOP! You're copying Balance. Put "NOT_FOUND" in '{debit_column}' instead.
+        → If NO: Good, continue.
+
+     ❓ Q2: "Is the amount I'm putting in 'Credit/Deposit' the SAME as the Balance?"
+        → If YES: STOP! You're copying Balance. Put "NOT_FOUND" in Credit/Deposit instead.
+        → If NO: Good, continue.
+
+     ❓ Q3: "Is this Balance value the SAME as the previous row's Balance?"
+        → If YES: STOP! Double-check you're reading the correct Balance value from the image.
+        → If NO: Good, Balance values should change with each transaction.
+
+     ❓ Q4: "Does this row have amounts in BOTH '{debit_column}' AND 'Credit/Deposit'?"
+        → If YES: STOP! A transaction is EITHER debit OR credit, not both. Fix it.
+        → If NO: Good, each row should have "NOT_FOUND" in one of these columns.
+
+     ❓ Q5: "Am I reading from the correct column in the image?"
+        → Count columns from left to right to verify position
+        → Don't let the description text confuse you about the column position
+
+  5️⃣ WRITE THE ROW with "NOT_FOUND" for empty cells:
+     - Empty '{debit_column}' cell? → Write "NOT_FOUND"
+     - Empty Credit/Deposit cell? → Write "NOT_FOUND"
+     - MOST rows will have "NOT_FOUND" in either column 3 OR column 4
+
+  ═══════════════════════════════════════════════════════════════════════════
+  CRITICAL EXTRACTION RULES (READ THESE BEFORE EVERY 10 ROWS!)
+  ═══════════════════════════════════════════════════════════════════════════
+
+  ⚠️ RULE 1: FIXED COLUMN POSITIONS - Never shift columns!
+  - Column 1: {date_column}
+  - Column 2: {description_column}
+  - Column 3: {debit_column} ← Payments, withdrawals, debits go HERE
+  - Column 4: Credit/Deposit ← Income, deposits, credits go HERE
+  - Column 5: Balance
+  - Empty cell in column 3 or 4? → Write "NOT_FOUND" (don't skip to next value!)
+
+  ⚠️ RULE 2: TRANSACTION TYPE determines which column gets the amount:
+  - PAYMENTS/WITHDRAWALS → Column 3 ({debit_column})
+    Examples: EFTPOS, ATM, BPAY, Direct Debit, Mortgage, Insurance, Utilities, Purchase
+  - INCOME/DEPOSITS → Column 4 (Credit/Deposit)
+    Examples: Salary, Direct Credit, Interest, Dividend, Refund
+
+  ⚠️ RULE 3: Balance values MUST be different for consecutive rows!
+  - If two rows have the same Balance → you made an error (likely reading from wrong column)
+  - Each transaction changes the Balance (either up or down)
+  - Repeated Balance = you're copying instead of reading!
+
+  ⚠️ RULE 4: NEVER copy Balance into "{debit_column}" or Credit columns!
+  - Balance is the LAST column (column 5)
+  - {debit_column} is column 3
+  - Credit/Deposit is column 4
+  - If column 3 value = column 5 value → ERROR! Put "NOT_FOUND" in column 3
+  - If column 4 value = column 5 value → ERROR! Put "NOT_FOUND" in column 4
+
+  ⚠️ RULE 5: Each transaction is EITHER debit OR credit (NEVER both)
+  - If "{debit_column}" has amount → write "NOT_FOUND" in Credit/Deposit
+  - If Credit/Deposit has amount → write "NOT_FOUND" in "{debit_column}"
   - MOST rows will have "NOT_FOUND" in one of these two columns!
 
-  ⚠️ RULE 4: "NOT_FOUND" is literal text (9 characters)
+  ⚠️ RULE 6: "NOT_FOUND" is literal text (9 characters)
   - NOT an empty/blank cell!
   - Write the exact text: NOT_FOUND
+
+  ═══════════════════════════════════════════════════════════════════════════
+  🔄 REMINDER: After extracting every 10 rows, re-read RULE 1-6 above!
+  🔄 REMINDER: Check your last 3 rows - are the Balance values all different?
+  🔄 REMINDER: Check your last 3 rows - are debits in column 3, not column 4?
+  ═══════════════════════════════════════════════════════════════════════════
 
   Extract ALL transaction rows as markdown table with ALL columns:
 
