@@ -306,16 +306,22 @@ structure_detection_template: |
   OUTPUT FORMAT (DO NOT EXTRACT TABLE DATA - ONLY METADATA)
   ═══════════════════════════════════════════════════════════════════════════
 
+  ⚠️ CRITICAL: Output PLAIN TEXT only - NO markdown formatting, NO bold (**), NO asterisks!
+
   DOCUMENT_TYPE: BANK_STATEMENT
   COLUMN_HEADERS: [header1] | [header2] | [header3] | [header4] | [header5]
   ESTIMATED_ROWS: [number]
 
-  Example output (use PIPE | separators, not commas):
+  Example output (PLAIN TEXT, use PIPE | separators, NO markdown **bold**):
   DOCUMENT_TYPE: BANK_STATEMENT
   COLUMN_HEADERS: Date | Description | Withdrawal | Deposit | Balance
   ESTIMATED_ROWS: 40
 
-  ⚠️ IMPORTANT: Use pipe | characters to separate headers, NOT commas!
+  ⚠️ IMPORTANT:
+  - Use pipe | characters to separate headers, NOT commas!
+  - Do NOT use **bold** markdown formatting
+  - Do NOT use asterisks around the output
+  - Plain text only!
 
   ⚠️ DO NOT EXTRACT THE MARKDOWN TABLE - That will be done in Turn 1!
   ⚠️ Output ONLY the metadata above (document type, column headers, row count)
