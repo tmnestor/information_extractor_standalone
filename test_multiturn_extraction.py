@@ -178,13 +178,18 @@ def main():
     for image_path in image_paths:
         image_name = Path(image_path).name
 
+        # Display image name prominently
+        console.print("\n" + "=" * 80)
+        console.print(f"[bold cyan]IMAGE: {image_name}[/bold cyan]")
+        console.print("=" * 80)
+
         # Extract bank statement (returns markdown table)
-        console.print(f"\n[bold cyan]Processing: {image_path}[/bold cyan]")
+        console.print(f"\n[cyan]Processing: {image_path}[/cyan]")
         markdown_table = extractor.extract_bank_statement(str(image_path))
 
         # Display the extracted markdown table
         console.print("\n" + "=" * 80)
-        console.print("[bold cyan]Extracted 3-Column Markdown Table:[/bold cyan]")
+        console.print(f"[bold cyan]Extracted Markdown Table: {image_name}[/bold cyan]")
         console.print("=" * 80)
         console.print()
 
