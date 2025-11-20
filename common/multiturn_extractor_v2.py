@@ -442,7 +442,7 @@ class MultiTurnExtractorV2:
                 except (ValueError, IndexError):
                     estimated_rows = 0
 
-        # FALLBACK: If no headers found via COLUMN_HEADERS: line, try parsing markdown table
+        # FALLBACK 1: If no headers found via COLUMN_HEADERS: line, try parsing markdown table
         if not column_headers:
             console.print("[yellow]  → No COLUMN_HEADERS line found, trying markdown table fallback...[/yellow]")
             for line in lines:
@@ -458,6 +458,21 @@ class MultiTurnExtractorV2:
                             column_headers = [h.strip().replace("*", "") for h in line.split("|")[1:-1] if h.strip()]
                             console.print(f"[yellow]  → Extracted from markdown table: {column_headers}[/yellow]")
                             break
+
+        # FALLBACK 2: Look for a pipe-separated line without "COLUMN_HEADERS:" prefix
+        if not column_headers:
+            console.print("[yellow]  → Trying pipe-separated line fallback...[/yellow]")
+            for line in lines:
+                line = line.strip()
+                # Skip markdown headers and empty lines
+                if line.startswith("**") or line.startswith("#") or not line:
+                    continue
+                # Look for a line with multiple pipes (likely headers)
+                if "|" in line and line.count("|") >= 2:
+                    # Parse as pipe-separated headers
+                    column_headers = [h.strip().replace("*", "") for h in line.split("|") if h.strip()]
+                    console.print(f"[yellow]  → Extracted from pipe-separated line: {column_headers}[/yellow]")
+                    break
 
         return TableStructure(
             structure_type=structure_type,

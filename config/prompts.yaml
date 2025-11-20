@@ -284,11 +284,12 @@ structure_detection_template: |
 
   What are the column headers of the transaction table?
 
-  Read ALL column header names from left to right.
+  Read ALL column header names from left to right (include every column you see).
 
-  Output them as a pipe-separated list (space | space between each header).
+  Output MUST start with "COLUMN_HEADERS:" followed by ALL header names.
+  Separate each header name with space-pipe-space " | "
 
-  Use PLAIN TEXT only - NO markdown formatting, NO bold **
+  Markdown only - NO explanations
 
 # Column extraction - Extract values from a specific column
 column_extraction_template: |
