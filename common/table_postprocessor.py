@@ -18,7 +18,7 @@ Usage:
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 # Optional Rich console for prettier output
 try:
