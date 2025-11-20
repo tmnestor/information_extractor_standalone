@@ -405,8 +405,8 @@ class MultiTurnExtractorV2:
                 # Check if pipe-separated format on same line
                 if "|" in line:
                     headers_str = line.split(":", 1)[1].strip()
-                    # Strip markdown asterisks from each header
-                    column_headers = [h.strip().replace("*", "") for h in headers_str.split("|")]
+                    # Strip markdown asterisks from each header and filter empty strings (from trailing pipes)
+                    column_headers = [h.strip().replace("*", "") for h in headers_str.split("|") if h.strip()]
                     console.print(f"[yellow]  → Parsed headers: {column_headers}[/yellow]")
                 else:
                     # Markdown bullet format follows on next lines

@@ -282,18 +282,33 @@ structure_detection_template: |
   IF BANK_STATEMENT: DIAGNOSTIC - DESCRIBE WHAT YOU SEE
   ═══════════════════════════════════════════════════════════════════════════
 
-  TASK: Describe the transaction table structure
+  TASK: Carefully examine the transaction table and describe EXACTLY what you see.
 
-  Look at the bank statement image and describe what you see:
+  🚨 IMPORTANT: Answer ALL questions below BEFORE providing column headers!
 
-  1. What is the background color of the table header row?
-  2. How many columns does the transaction table have?
-  3. What is the EXACT text of each column header, reading from LEFT to RIGHT?
-  4. Is there a column between "Date" and "Debit"? If yes, what does it say?
+  STEP 1 - TABLE HEADER VISUAL INSPECTION:
+  Q1: What is the background color of the table header row? (e.g., yellow, gray, white, orange)
+  Q2: Is the header text bold, regular, or a different color?
 
-  Output your description in plain text, then provide the column headers:
+  STEP 2 - COUNT COLUMNS:
+  Q3: Starting from the leftmost column and moving right, count each column.
+  Q4: How many columns are in the transaction table? (Count carefully: 3, 4, or 5?)
 
-  COLUMN_HEADERS: [header1] | [header2] | [header3] | ...
+  STEP 3 - READ EACH HEADER (LEFT TO RIGHT):
+  Q5: What does the 1st column (leftmost) say?
+  Q6: What does the 2nd column say?
+  Q7: What does the 3rd column say?
+  Q8: What does the 4th column say? (if it exists)
+  Q9: What does the 5th column say? (if it exists)
+
+  STEP 4 - SPECIFIC CHECK:
+  Q10: Look between the "Date" column and the "Debit" column.
+  Q11: Is there another column in between them? YES or NO?
+  Q12: If YES, what is the exact text of that middle column?
+
+  MANDATORY: Answer questions Q1-Q12 above, THEN provide column headers below:
+
+  COLUMN_HEADERS: [header1] | [header2] | [header3] | [header4 if exists]
 
   ═══════════════════════════════════════════════════════════════════════════
   OUTPUT FORMAT (ONLY DOCUMENT TYPE AND COLUMN HEADERS)
