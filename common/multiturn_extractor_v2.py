@@ -435,6 +435,23 @@ class MultiTurnExtractorV2:
                 except (ValueError, IndexError):
                     estimated_rows = 0
 
+        # FALLBACK: If no headers found via COLUMN_HEADERS: line, try parsing markdown table
+        if not column_headers:
+            console.print("[yellow]  → No COLUMN_HEADERS line found, trying markdown table fallback...[/yellow]")
+            for line in lines:
+                line = line.strip()
+                # Look for markdown table header row (starts with |, contains |, ends with |)
+                if line.startswith("|") and line.endswith("|") and line.count("|") >= 3:
+                    # Check if next line is a separator (| --- | --- |)
+                    line_idx = lines.index(line.strip())
+                    if line_idx + 1 < len(lines):
+                        next_line = lines[line_idx + 1].strip()
+                        if next_line.startswith("|") and "---" in next_line:
+                            # This is a markdown table header
+                            column_headers = [h.strip().replace("*", "") for h in line.split("|")[1:-1] if h.strip()]
+                            console.print(f"[yellow]  → Extracted from markdown table: {column_headers}[/yellow]")
+                            break
+
         return TableStructure(
             structure_type=structure_type,
             column_headers=column_headers,
