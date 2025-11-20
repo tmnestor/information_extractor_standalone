@@ -284,16 +284,23 @@ structure_detection_template: |
 
   TASK: Read the transaction table column headers
 
-  Look at the transaction table and identify the EXACT column header names.
+  🚨 CRITICAL: Extract ALL column headers you see - do NOT skip any columns!
 
-  Common variations:
+  STEP 1: Look at the table header row (usually highlighted or bold)
+  STEP 2: Count how many columns the table has (typically 3-5 columns)
+  STEP 3: Read each column header from LEFT TO RIGHT
+  STEP 4: Extract EVERY header - if you see 4 columns, extract 4 headers!
+
+  Common variations (for reference only - extract what you actually see):
   - Date column: "Date"
   - Description: "Description", "Transaction", "Details", "Transaction Details"
   - Debit/Withdrawal: "Debit", "Withdrawal", "Withdrawals", "Paid Out", "Debits"
   - Credit/Deposit: "Credit", "Deposit", "Deposits", "Paid In", "Credits"
   - Balance: "Balance"
 
-  IMPORTANT: Use the EXACT header text from the image - these will be used as literals in subsequent turns!
+  ⚠️ DO NOT skip the description column if it exists!
+  ⚠️ Extract headers in the exact order they appear left-to-right
+  ⚠️ Use the EXACT header text from the image - these will be used as literals in subsequent turns!
 
   ═══════════════════════════════════════════════════════════════════════════
   OUTPUT FORMAT (ONLY DOCUMENT TYPE AND COLUMN HEADERS)
