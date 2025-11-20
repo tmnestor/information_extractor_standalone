@@ -433,7 +433,12 @@ class MultiTurnExtractorV2:
 
     def _map_column_headers(self, structure: TableStructure) -> TableStructure:
         """
-        Map detected column headers to semantic types.
+        Map detected column headers to semantic types using structural pattern matching.
+
+        Identifies common table structures by column count and position:
+        - 3-column: Date | Description | Amount
+        - 4-column: Date | Description | Amount | Balance OR Date | Description | Debit | Credit
+        - 5-column: Date | Description | Debit | Credit | Balance
 
         Args:
             structure: TableStructure with column_headers
@@ -441,8 +446,53 @@ class MultiTurnExtractorV2:
         Returns:
             Updated TableStructure with semantic mappings
         """
+        num_cols = len(structure.column_headers)
         headers_lower = [h.lower() for h in structure.column_headers]
 
+        # Structural pattern matching by column count
+        if num_cols == 3:
+            # Pattern: Date | Description | Amount
+            structure.date_column = structure.column_headers[0]
+            structure.description_column = structure.column_headers[1]
+            structure.debit_column = structure.column_headers[2]  # Single amount column
+            structure.credit_column = structure.column_headers[2]  # Same as debit
+            structure.balance_column = None
+
+        elif num_cols == 4:
+            # Detect pattern by checking if last column is Balance
+            if "balance" in headers_lower[3]:
+                # Pattern: Date | Description | Amount | Balance
+                structure.date_column = structure.column_headers[0]
+                structure.description_column = structure.column_headers[1]
+                structure.debit_column = structure.column_headers[2]  # Single amount
+                structure.credit_column = structure.column_headers[2]  # Same as debit
+                structure.balance_column = structure.column_headers[3]
+            else:
+                # Pattern: Date | Description | Debit | Credit (no balance)
+                structure.date_column = structure.column_headers[0]
+                structure.description_column = structure.column_headers[1]
+                structure.debit_column = structure.column_headers[2]
+                structure.credit_column = structure.column_headers[3]
+                structure.balance_column = None
+
+        elif num_cols == 5:
+            # Pattern: Date | Description | Debit | Credit | Balance
+            structure.date_column = structure.column_headers[0]
+            structure.description_column = structure.column_headers[1]
+            structure.debit_column = structure.column_headers[2]
+            structure.credit_column = structure.column_headers[3]
+            structure.balance_column = structure.column_headers[4]
+
+        else:
+            # Fallback to keyword matching for non-standard structures
+            self._map_columns_by_keywords(structure, headers_lower)
+
+        return structure
+
+    def _map_columns_by_keywords(
+        self, structure: TableStructure, headers_lower: List[str]
+    ) -> None:
+        """Fallback keyword-based mapping for non-standard table structures."""
         # Map date column
         for i, header in enumerate(headers_lower):
             if "date" in header:
@@ -462,7 +512,7 @@ class MultiTurnExtractorV2:
         for i, header in enumerate(headers_lower):
             if any(
                 keyword in header
-                for keyword in ["debit", "withdrawal", "withdrawals", "money out", "dr"]
+                for keyword in ["debit", "withdrawal", "withdrawals", "money out", "dr", "paid"]
             ):
                 structure.debit_column = structure.column_headers[i]
                 break
@@ -471,7 +521,7 @@ class MultiTurnExtractorV2:
         for i, header in enumerate(headers_lower):
             if any(
                 keyword in header
-                for keyword in ["credit", "deposit", "deposits", "money in", "cr"]
+                for keyword in ["credit", "deposit", "deposits", "money in", "cr", "received"]
             ):
                 structure.credit_column = structure.column_headers[i]
                 break
@@ -481,8 +531,6 @@ class MultiTurnExtractorV2:
             if "balance" in header:
                 structure.balance_column = structure.column_headers[i]
                 break
-
-        return structure
 
     def _extract_date_column(
         self, image_path: Path, structure: TableStructure
