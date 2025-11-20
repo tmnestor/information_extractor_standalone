@@ -461,12 +461,24 @@ class MultiTurnExtractorV2:
 
         # Structural pattern matching by column count
         if num_cols == 3:
-            # Pattern: Date | Description | Amount
-            structure.date_column = structure.column_headers[0]
-            structure.description_column = structure.column_headers[1]
-            structure.debit_column = structure.column_headers[2]  # Single amount column
-            structure.credit_column = structure.column_headers[2]  # Same as debit
-            structure.balance_column = None
+            # Detect which 3-column pattern by checking column 1 and 2 keywords
+            col1_has_debit = any(kw in headers_lower[1] for kw in ["debit", "withdrawal", "withdrawals", "dr", "paid"])
+            col2_has_credit = any(kw in headers_lower[2] for kw in ["credit", "deposit", "deposits", "cr", "received"])
+
+            if col1_has_debit and col2_has_credit:
+                # Pattern B: Date | Debit | Credit (no description column)
+                structure.date_column = structure.column_headers[0]
+                structure.description_column = None  # No description column
+                structure.debit_column = structure.column_headers[1]
+                structure.credit_column = structure.column_headers[2]
+                structure.balance_column = None
+            else:
+                # Pattern A: Date | Description | Amount (single amount column)
+                structure.date_column = structure.column_headers[0]
+                structure.description_column = structure.column_headers[1]
+                structure.debit_column = structure.column_headers[2]  # Single amount column
+                structure.credit_column = structure.column_headers[2]  # Same as debit
+                structure.balance_column = None
 
         elif num_cols == 4:
             # Detect pattern by checking if last column is Balance

@@ -287,11 +287,11 @@ structure_detection_template: |
   Look at the transaction table and identify the EXACT column header names.
 
   Common variations:
-  - Date column: "Date", "Transaction Date", "Posting Date", "Trans Date"
-  - Description: "Description", "Transaction", "Details", "Merchant", "Transaction Details"
-  - Debit/Withdrawal: "Debit", "Withdrawal", "Withdrawals", "Paid Out", "Amount", "Debits"
-  - Credit/Deposit: "Credit", "Deposit", "Deposits", "Paid In", "Amount", "Credits"
-  - Balance: "Balance", "Running Balance", "Closing Balance", "Current Balance"
+  - Date column: "Date"
+  - Description: "Description", "Transaction", "Details", "Transaction Details"
+  - Debit/Withdrawal: "Debit", "Withdrawal", "Withdrawals", "Paid Out", "Debits"
+  - Credit/Deposit: "Credit", "Deposit", "Deposits", "Paid In", "Credits"
+  - Balance: "Balance"
 
   IMPORTANT: Use the EXACT header text from the image - these will be used as literals in subsequent turns!
 
