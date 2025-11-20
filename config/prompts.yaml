@@ -279,36 +279,29 @@ structure_detection_template: |
   If NOT BANK_STATEMENT → STOP HERE (output only DOCUMENT_TYPE)
 
   ═══════════════════════════════════════════════════════════════════════════
-  IF BANK_STATEMENT: DIAGNOSTIC - DESCRIBE WHAT YOU SEE
+  IF BANK_STATEMENT: EXTRACT COLUMN HEADERS ONLY (DO NOT EXTRACT DATA ROWS)
   ═══════════════════════════════════════════════════════════════════════════
 
-  TASK: Carefully examine the transaction table and describe EXACTLY what you see.
+  🚨 CRITICAL INSTRUCTION: Extract ONLY the column header names from the table.
+  🚨 DO NOT extract any transaction data rows - that happens in Turn 1!
 
-  🚨 IMPORTANT: Answer ALL questions below BEFORE providing column headers!
+  TASK: Look at the transaction table header row and read the column names.
 
-  STEP 1 - TABLE HEADER VISUAL INSPECTION:
-  Q1: What is the background color of the table header row? (e.g., yellow, gray, white, orange)
-  Q2: Is the header text bold, regular, or a different color?
+  STEP 1: Find the table header row (usually highlighted with a colored background)
+  STEP 2: Count the number of columns (typically 3, 4, or 5 columns)
+  STEP 3: Read each column header name from LEFT to RIGHT
+  STEP 4: Output ONLY the header names in the format below
 
-  STEP 2 - COUNT COLUMNS:
-  Q3: Starting from the leftmost column and moving right, count each column.
-  Q4: How many columns are in the transaction table? (Count carefully: 3, 4, or 5?)
+  ❌ WRONG - Do NOT output a full table like this:
+  | Date | Description | Debit | Credit |
+  | --- | --- | --- | --- |
+  | DD/MM | Transaction description text | $XXX.XX |  |   ← DO NOT INCLUDE DATA ROWS!
+  | DD/MM | Another transaction text | $YYY.YY |  |   ← DO NOT INCLUDE DATA ROWS!
 
-  STEP 3 - READ EACH HEADER (LEFT TO RIGHT):
-  Q5: What does the 1st column (leftmost) say?
-  Q6: What does the 2nd column say?
-  Q7: What does the 3rd column say?
-  Q8: What does the 4th column say? (if it exists)
-  Q9: What does the 5th column say? (if it exists)
+  ✅ CORRECT - Output ONLY the header names like this:
+  COLUMN_HEADERS: Date | Description | Debit | Credit
 
-  STEP 4 - SPECIFIC CHECK:
-  Q10: Look between the "Date" column and the "Debit" column.
-  Q11: Is there another column in between them? YES or NO?
-  Q12: If YES, what is the exact text of that middle column?
-
-  MANDATORY: Answer questions Q1-Q12 above, THEN provide column headers below:
-
-  COLUMN_HEADERS: [header1] | [header2] | [header3] | [header4 if exists]
+  🚨 STOP after extracting headers - do NOT extract transaction data!
 
   ═══════════════════════════════════════════════════════════════════════════
   OUTPUT FORMAT (ONLY DOCUMENT TYPE AND COLUMN HEADERS)
