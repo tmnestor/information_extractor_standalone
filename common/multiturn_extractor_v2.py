@@ -173,28 +173,9 @@ class MultiTurnExtractorV2:
         console.print(turn1_table)
         console.print("[dim]" + "=" * 80 + "[/dim]\n")
 
-        # Post-process the extracted table to fix common errors
-        # ONLY for standard 5-column tables (Date | Description | Withdrawal | Deposit | Balance)
-        # For 3-column and 4-column tables, skip post-processing to preserve native structure
-        num_columns = len(structure.column_headers)
-
-        if num_columns == 5:
-            console.print("\n[cyan]Post-Processing:[/cyan] Cleaning and validating 5-column table...")
-            from common.table_postprocessor import TablePostProcessor
-
-            postprocessor = TablePostProcessor(verbose=True)
-            cleaned_table = postprocessor.process_markdown_table(turn1_table)
-
-            # DEBUG: Show cleaned table
-            console.print("\n[yellow]DEBUG - Turn 1 Full Response (CLEANED):[/yellow]")
-            console.print("[dim]" + "=" * 80 + "[/dim]")
-            console.print(cleaned_table)
-            console.print("[dim]" + "=" * 80 + "[/dim]\n")
-        else:
-            console.print(f"\n[yellow]⚠️  Post-processing skipped for {num_columns}-column table[/yellow]")
-            console.print("[yellow]Post-processor is only applicable to 5-column tables[/yellow]")
-            console.print(f"[yellow]Preserving native {num_columns}-column structure: {' | '.join(structure.column_headers)}[/yellow]\n")
-            cleaned_table = turn1_table
+        # Post-processing DISABLED - too brittle, causes incorrect "fixes"
+        console.print("\n[yellow]ℹ️  Post-processing disabled - using raw extraction[/yellow]\n")
+        cleaned_table = turn1_table
 
         # ============================================================================
         # TURN 2 DISABLED - First verify Turn 0 and Turn 1 are working correctly
