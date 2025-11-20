@@ -292,34 +292,10 @@ structure_detection_template: |
   OUTPUT FORMAT (ONLY DOCUMENT TYPE AND COLUMN HEADERS)
   ═══════════════════════════════════════════════════════════════════════════
 
-  ⚠️ CRITICAL: Output PLAIN TEXT only - NO markdown formatting, NO bold (**), NO asterisks!
+  Output format (PLAIN TEXT only - NO markdown formatting, NO bold **):
 
   DOCUMENT_TYPE: BANK_STATEMENT
-  COLUMN_HEADERS: [header1] | [header2] | [header3] | ... (extract ALL column headers you see)
-
-  Example outputs (PLAIN TEXT, use PIPE | separators, NO markdown **bold**):
-
-  3-column statement:
-  DOCUMENT_TYPE: BANK_STATEMENT
-  COLUMN_HEADERS: Date | Description | Amount
-
-  4-column statement:
-  DOCUMENT_TYPE: BANK_STATEMENT
-  COLUMN_HEADERS: Date | Transaction | Amount | Balance
-
-  5-column statement:
-  DOCUMENT_TYPE: BANK_STATEMENT
-  COLUMN_HEADERS: Date | Description | Withdrawal | Deposit | Balance
-
-  ⚠️ IMPORTANT:
-  - Use pipe | characters to separate headers, NOT commas!
-  - Do NOT use **bold** markdown formatting
-  - Do NOT use asterisks around the output
-  - Plain text only!
-
-  ⚠️ DO NOT extract the markdown table - that will be done in Turn 1!
-  ⚠️ DO NOT count rows or detect structure type - not needed!
-  ⚠️ Output ONLY document type and column headers!
+  COLUMN_HEADERS: [extract ALL headers you see, separated by pipes |]
 
 # Column extraction - Extract values from a specific column
 column_extraction_template: |
