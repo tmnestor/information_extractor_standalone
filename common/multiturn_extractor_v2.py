@@ -157,9 +157,10 @@ class MultiTurnExtractorV2:
         console.print(f"    Credit → {structure.credit_column}")
         console.print(f"    Balance → {structure.balance_column}")
 
-        # Turn 1: Extract full table (all 5 columns, all rows)
-        console.print("\n[cyan]Turn 1:[/cyan] Extracting full table (all 5 columns, all rows)...")
-        console.print(f"  Columns: [green]{structure.date_column} | {structure.description_column} | {structure.debit_column} | {structure.credit_column} | {structure.balance_column}[/green]")
+        # Turn 1: Extract full table (all columns, all rows)
+        num_columns = len(structure.column_headers)
+        console.print(f"\n[cyan]Turn 1:[/cyan] Extracting full table ({num_columns} columns, all rows)...")
+        console.print(f"  Columns: [green]{' | '.join(structure.column_headers)}[/green]")
         console.print("  [dim]Using Turn 0 response for conversation context...[/dim]")
 
         turn1_table = self._turn1_extract_3columns(
@@ -554,13 +555,25 @@ class MultiTurnExtractorV2:
             "turn1_3column_template"
         )
 
-        # Format with actual column names (all 5 columns)
+        # Build dynamic column list and table header based on detected columns
+        column_list = "\n  ".join(
+            [f"- Column {i+1}: \"{header}\"" for i, header in enumerate(structure.column_headers)]
+        )
+
+        column_positions = "\n  ".join(
+            [f"   - Column {i+1}: {header}" for i, header in enumerate(structure.column_headers)]
+        )
+
+        # Build markdown table header
+        header_row = "| " + " | ".join(structure.column_headers) + " |"
+        separator_row = "|" + "|".join(["-" * (len(h) + 2) for h in structure.column_headers]) + "|"
+        table_header = header_row + "\n  " + separator_row
+
+        # Format with dynamic column information
         turn1_prompt = prompt_template.format(
-            date_column=structure.date_column,
-            description_column=structure.description_column,
-            debit_column=structure.debit_column,
-            credit_column=structure.credit_column,
-            balance_column=structure.balance_column,
+            column_list=column_list,
+            column_positions=column_positions,
+            table_header=table_header,
         )
 
         # Build conversation history with Turn 0
