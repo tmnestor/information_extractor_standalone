@@ -168,9 +168,22 @@ class MultiTurnExtractorV2:
         )
 
         # DEBUG: Show Turn 1 response
-        console.print("\n[yellow]DEBUG - Turn 1 Full Response:[/yellow]")
+        console.print("\n[yellow]DEBUG - Turn 1 Full Response (RAW):[/yellow]")
         console.print("[dim]" + "=" * 80 + "[/dim]")
         console.print(turn1_table)
+        console.print("[dim]" + "=" * 80 + "[/dim]\n")
+
+        # Post-process the extracted table to fix common errors
+        console.print("\n[cyan]Post-Processing:[/cyan] Cleaning and validating table...")
+        from common.table_postprocessor import TablePostProcessor
+
+        postprocessor = TablePostProcessor(verbose=True)
+        cleaned_table = postprocessor.process_markdown_table(turn1_table)
+
+        # DEBUG: Show cleaned table
+        console.print("\n[yellow]DEBUG - Turn 1 Full Response (CLEANED):[/yellow]")
+        console.print("[dim]" + "=" * 80 + "[/dim]")
+        console.print(cleaned_table)
         console.print("[dim]" + "=" * 80 + "[/dim]\n")
 
         # ============================================================================
@@ -179,8 +192,8 @@ class MultiTurnExtractorV2:
         console.print("\n[bold yellow]⚠️  Turn 2 DISABLED - Stopping after Turn 1[/bold yellow]")
         console.print("[yellow]Verify Turn 0 and Turn 1 prompts and responses before proceeding[/yellow]")
 
-        # Return Turn 1 result for now
-        return turn1_table
+        # Return cleaned result
+        return cleaned_table
 
         # # Turn 2: Remove rows with "NOT_FOUND" in debit column (withdrawals only)
         # console.print("\n[cyan]Turn 2:[/cyan] Filtering to withdrawals only...")
