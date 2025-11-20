@@ -154,10 +154,12 @@ class MultiTurnExtractorV2:
         console.print(f"    Date → {structure.date_column}")
         console.print(f"    Description → {structure.description_column}")
         console.print(f"    Debit → {structure.debit_column}")
+        console.print(f"    Credit → {structure.credit_column}")
+        console.print(f"    Balance → {structure.balance_column}")
 
-        # Turn 1: Filter to 3 columns (keep ALL rows)
-        console.print("\n[cyan]Turn 1:[/cyan] Filtering to 3 columns (all rows)...")
-        console.print(f"  Columns: [green]{structure.date_column} | {structure.description_column} | {structure.debit_column}[/green]")
+        # Turn 1: Extract full table (all 5 columns, all rows)
+        console.print("\n[cyan]Turn 1:[/cyan] Extracting full table (all 5 columns, all rows)...")
+        console.print(f"  Columns: [green]{structure.date_column} | {structure.description_column} | {structure.debit_column} | {structure.credit_column} | {structure.balance_column}[/green]")
         console.print("  [dim]Using Turn 0 response for conversation context...[/dim]")
 
         turn1_table = self._turn1_extract_3columns(
@@ -552,11 +554,13 @@ class MultiTurnExtractorV2:
             "turn1_3column_template"
         )
 
-        # Format with actual column names
+        # Format with actual column names (all 5 columns)
         turn1_prompt = prompt_template.format(
             date_column=structure.date_column,
             description_column=structure.description_column,
             debit_column=structure.debit_column,
+            credit_column=structure.credit_column,
+            balance_column=structure.balance_column,
         )
 
         # Build conversation history with Turn 0

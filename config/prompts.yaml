@@ -374,9 +374,11 @@ turn1_3column_template: |
   ═══════════════════════════════════════════════════════════════════════════
 
   In my previous response (Turn 0), I identified these column headers:
-  - Date column: "{date_column}"
-  - Description column: "{description_column}"
-  - Debit/Withdrawal column: "{debit_column}"
+  - Column 1: "{date_column}"
+  - Column 2: "{description_column}"
+  - Column 3: "{debit_column}"
+  - Column 4: "{credit_column}"
+  - Column 5: "{balance_column}"
 
   NOW extract the FULL transaction table from the bank statement image.
   Use the EXACT column names I identified above as the literal column headers.
@@ -389,8 +391,8 @@ turn1_3column_template: |
      - Column 1: {date_column}
      - Column 2: {description_column}
      - Column 3: {debit_column}
-     - Column 4: Credit/Deposit
-     - Column 5: Balance
+     - Column 4: {credit_column}
+     - Column 5: {balance_column}
 
   2️⃣ READ EACH CELL BY POSITION:
      - For each row, read the value in each column position
@@ -406,8 +408,8 @@ turn1_3column_template: |
 
   Extract ALL transaction rows as a markdown table:
 
-  | {date_column} | {description_column} | {debit_column} | Credit/Deposit | Balance |
-  |---------------|----------------------|----------------|----------------|---------|
+  | {date_column} | {description_column} | {debit_column} | {credit_column} | {balance_column} |
+  |---------------|----------------------|----------------|-----------------|------------------|
   | ...extract every row exactly as shown in the image... |
 
   IMPORTANT:
