@@ -402,12 +402,19 @@ class MultiTurnExtractorV2:
             # Column Headers (markdown bullet format)
             elif "column_headers:" in line_lower or line.startswith("COLUMN_HEADERS:"):
                 console.print(f"[yellow]  → Matched COLUMN_HEADERS line: '{line}'[/yellow]")
+                headers_str = line.split(":", 1)[1].strip()
+
                 # Check if pipe-separated format on same line
-                if "|" in line:
-                    headers_str = line.split(":", 1)[1].strip()
+                if "|" in headers_str:
                     # Strip markdown asterisks from each header and filter empty strings (from trailing pipes)
                     column_headers = [h.strip().replace("*", "") for h in headers_str.split("|") if h.strip()]
-                    console.print(f"[yellow]  → Parsed headers: {column_headers}[/yellow]")
+                    console.print(f"[yellow]  → Parsed pipe-separated headers: {column_headers}[/yellow]")
+                # Fallback: Check if comma-separated format (e.g., [Date, Transaction, Debit, Credit])
+                elif "," in headers_str:
+                    # Remove brackets and split by comma
+                    headers_str = headers_str.strip("[]")
+                    column_headers = [h.strip().replace("*", "").replace('"', '').replace("'", "") for h in headers_str.split(",") if h.strip()]
+                    console.print(f"[yellow]  → Parsed comma-separated headers: {column_headers}[/yellow]")
                 else:
                     # Markdown bullet format follows on next lines
                     in_headers_section = True

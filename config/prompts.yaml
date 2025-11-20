@@ -284,18 +284,11 @@ structure_detection_template: |
 
   What are the column headers of the transaction table?
 
-  Read ALL column header names from left to right and output them:
+  Read ALL column header names from left to right.
 
-  COLUMN_HEADERS: [use pipes | to separate | each header]
+  Output them as a pipe-separated list (space | space between each header).
 
-  ═══════════════════════════════════════════════════════════════════════════
-  OUTPUT FORMAT (ONLY DOCUMENT TYPE AND COLUMN HEADERS)
-  ═══════════════════════════════════════════════════════════════════════════
-
-  Output format (PLAIN TEXT only - NO markdown formatting, NO bold **):
-
-  DOCUMENT_TYPE: BANK_STATEMENT
-  COLUMN_HEADERS: [extract ALL headers you see, separated by pipes |]
+  Use PLAIN TEXT only - NO markdown formatting, NO bold **
 
 # Column extraction - Extract values from a specific column
 column_extraction_template: |
