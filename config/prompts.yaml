@@ -279,29 +279,14 @@ structure_detection_template: |
   If NOT BANK_STATEMENT → STOP HERE (output only DOCUMENT_TYPE)
 
   ═══════════════════════════════════════════════════════════════════════════
-  IF BANK_STATEMENT: EXTRACT COLUMN HEADERS ONLY (DO NOT EXTRACT DATA ROWS)
+  IF BANK_STATEMENT: EXTRACT TRANSACTION TABLE COLUMN HEADERS
   ═══════════════════════════════════════════════════════════════════════════
 
-  🚨 CRITICAL INSTRUCTION: Extract ONLY the column header names from the table.
-  🚨 DO NOT extract any transaction data rows - that happens in Turn 1!
+  What are the column headers of the transaction table?
 
-  TASK: Look at the transaction table header row and read the column names.
+  Read ALL column header names from left to right and output them:
 
-  STEP 1: Find the table header row (usually highlighted with a colored background)
-  STEP 2: Count the number of columns (typically 3, 4, or 5 columns)
-  STEP 3: Read each column header name from LEFT to RIGHT
-  STEP 4: Output ONLY the header names in the format below
-
-  ❌ WRONG - Do NOT output a full table like this:
-  | Date | Description | Debit | Credit |
-  | --- | --- | --- | --- |
-  | DD/MM | Transaction description text | $XXX.XX |  |   ← DO NOT INCLUDE DATA ROWS!
-  | DD/MM | Another transaction text | $YYY.YY |  |   ← DO NOT INCLUDE DATA ROWS!
-
-  ✅ CORRECT - Output ONLY the header names like this:
-  COLUMN_HEADERS: Date | Description | Debit | Credit
-
-  🚨 STOP after extracting headers - do NOT extract transaction data!
+  COLUMN_HEADERS: [use pipes | to separate | each header]
 
   ═══════════════════════════════════════════════════════════════════════════
   OUTPUT FORMAT (ONLY DOCUMENT TYPE AND COLUMN HEADERS)
